@@ -1,6 +1,6 @@
 /**
  * Multi-Platform Auto-Apply Runner — Playwright Stealth Automation Suite
- * Supports: Wellfound (wellfound.com) & Instahyre (instahyre.com)
+ * Supports: Wellfound (wellfound.com), Instahyre (instahyre.com), Foundit (foundit.in)
  *
  * Usage:
  *   # Wellfound
@@ -12,6 +12,11 @@
  *   node auto-apply-runner.js instahyre login
  *   node auto-apply-runner.js instahyre
  *   node auto-apply-runner.js instahyre --live
+ *
+ *   # Foundit
+ *   node auto-apply-runner.js foundit login
+ *   node auto-apply-runner.js foundit
+ *   node auto-apply-runner.js foundit --live
  */
 const path = require('path');
 const fs = require('fs');
@@ -54,11 +59,26 @@ const SITES = {
     submittedRe: /application submitted|1-Click Apply submitted|DRY_RUN — would click/i,
     dailyCap: 30,
   },
+  foundit: {
+    name: 'Foundit',
+    script: 'foundit-auto-apply.js',
+    profile: '.foundit-chrome-profile',
+    searches: [
+      'https://www.foundit.in/srp/results?query=react+developer&sort=1',
+      'https://www.foundit.in/srp/results?query=frontend+developer&sort=1',
+      'https://www.foundit.in/srp/results?query=full+stack+developer&sort=1',
+      'https://www.foundit.in/srp/results?query=next.js+developer&sort=1',
+    ],
+    loginUrl: 'https://www.foundit.in/seeker/login',
+    injectOn: (url) => /foundit\.in/.test(url),
+    submittedRe: /application submitted|Quick Apply submitted|DRY_RUN — would click/i,
+    dailyCap: 30,
+  },
 };
 
 const site = SITES[SITE_ARG];
 if (!site) {
-  console.log('Usage: node auto-apply-runner.js <wellfound|instahyre> [login|--live]');
+  console.log('Usage: node auto-apply-runner.js <wellfound|instahyre|foundit> [login|--live]');
   process.exit(1);
 }
 
@@ -101,7 +121,7 @@ function recordAppliedJob(jobId, jobData) {
     company: jobData.company || '',
     score: jobData.score || '',
     breakdown: jobData.breakdown || '',
-    link: jobData.link || (SITE_ARG === 'wellfound' ? `https://wellfound.com/jobs/${jobId}` : `https://www.instahyre.com/candidate/opportunities/${jobId}`),
+    link: jobData.link || (SITE_ARG === 'wellfound' ? `https://wellfound.com/jobs/${jobId}` : SITE_ARG === 'instahyre' ? `https://www.instahyre.com/candidate/opportunities/${jobId}` : `https://www.foundit.in/job/${jobId}`),
   };
   try {
     fs.writeFileSync(APPLIED_DB_FILE, JSON.stringify(appliedDb, null, 2));
@@ -149,7 +169,7 @@ function logApplication(job) {
     job.salary || job.ctc || '',
     job.skills || matchSkills(job.title + ' ' + (job.jd || job.description || '')),
     job.score ? `${job.score}/100` : '',
-    job.link || (SITE_ARG === 'wellfound' ? `https://wellfound.com/jobs/${job.id}` : `https://www.instahyre.com/candidate/opportunities/${job.id}`),
+    job.link || (SITE_ARG === 'wellfound' ? `https://wellfound.com/jobs/${job.id}` : SITE_ARG === 'instahyre' ? `https://www.instahyre.com/candidate/opportunities/${job.id}` : `https://www.foundit.in/job/${job.id}`),
     (job.jd || job.description || '').slice(0, 1200),
   ]));
 }
@@ -210,9 +230,9 @@ function buildInjection() {
   function wire(page) {
     page.on('console', (msg) => {
       const text = msg.text();
-      if (!/auto-apply|instahyre-apply/.test(text)) return;
+      if (!/auto-apply|instahyre-apply|foundit-apply/.test(text)) return;
       lastActivity = Date.now();
-      const clean = text.replace(/%c\[(?:auto-apply|instahyre-apply)\]\s*\S*/, '').trim();
+      const clean = text.replace(/%c\[(?:auto-apply|instahyre-apply|foundit-apply)\]\s*\S*/, '').trim();
       log('  ' + clean.slice(0, 160));
 
       // Capture job evaluation info
@@ -222,8 +242,8 @@ function buildInjection() {
         const atParts = parts[0].split(' @ ');
         const company = atParts.length > 1 ? atParts.pop() : '';
         const title = atParts.join(' @ ');
-        const idPart = parts.find((p) => p.includes('ID:') || p.includes('jobs/'));
-        const jobId = idPart?.replace(/Job ID:|ID:/, '').trim() || idPart?.match(/\/jobs\/(\d+)/)?.[1] || '';
+        const idPart = parts.find((p) => p.includes('ID:') || p.includes('jobs/') || p.includes('job/'));
+        const jobId = idPart?.replace(/Job ID:|ID:/, '').trim() || idPart?.match(/(?:\/jobs\/|\/job\/)([^\/?#]+)/)?.[1] || '';
         pendingJob = {
           id: jobId,
           title: title.trim(),
@@ -276,21 +296,26 @@ function buildInjection() {
   ctx.pages().forEach(wire);
   ctx.on('page', wire);
 
-  await mainPage.goto(site.searches[0], { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await mainPage.waitForTimeout(8000);
-  await mainPage.evaluate(injection).catch(() => {});
+  for (let searchIdx = 0; searchIdx < site.searches.length && submitted < TARGET && Date.now() < deadline; searchIdx++) {
+    const searchUrl = site.searches[searchIdx];
+    log(`Navigating to search URL (${searchIdx + 1}/${site.searches.length}): ${searchUrl}`);
+    await mainPage.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+    await mainPage.waitForTimeout(8000);
+    await mainPage.evaluate(injection).catch(() => {});
 
-  while (submitted < TARGET && Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 30000));
-
-    const pages = ctx.pages();
-    let anyBusy = false;
-    for (const p of pages) {
-      if (await isBusy(p)) anyBusy = true;
-    }
-
-    if (!anyBusy) {
-      await mainPage.evaluate(injection).catch(() => {});
+    // Allow search page to process
+    let searchWait = 0;
+    while (searchWait < 180000 && submitted < TARGET && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 30000));
+      searchWait += 30000;
+      const pages = ctx.pages();
+      let anyBusy = false;
+      for (const p of pages) {
+        if (await isBusy(p)) anyBusy = true;
+      }
+      if (!anyBusy) {
+        await mainPage.evaluate(injection).catch(() => {});
+      }
     }
   }
 
