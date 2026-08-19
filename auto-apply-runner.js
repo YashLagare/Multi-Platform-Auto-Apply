@@ -69,7 +69,7 @@ const SITES = {
       'https://www.foundit.in/srp/results?query=full+stack+developer&sort=1',
       'https://www.foundit.in/srp/results?query=next.js+developer&sort=1',
     ],
-    loginUrl: 'https://www.foundit.in/login',
+    loginUrl: 'https://www.foundit.in/rio/login?return_url=%2Fseeker%2Fprofile%3Fviewport%3Ddesktop',
     injectOn: (url) => /foundit\.in\/(?:srp|job)/.test(url),
     submittedRe: /application submitted|Quick Apply submitted|DRY_RUN — would click/i,
     dailyCap: 30,
@@ -190,7 +190,39 @@ function buildInjection() {
 }
 
 (async () => {
-  if (!LOGIN_MODE && TARGET <= 0) {
+  if (LOGIN_MODE) {
+    const { spawn } = require('child_process');
+    const profilePath = path.resolve(__dirname, site.profile);
+    const chromePaths = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
+    ];
+    const chromeExe = chromePaths.find((p) => fs.existsSync(p)) || 'chrome';
+
+    log(`Opening Native Chrome for ${site.name} login...`);
+    log(`Profile Directory: ${profilePath}`);
+    log(`👉 Log in with Google or Mobile/Email + OTP. When finished, CLOSE the browser window.`);
+
+    const chromeProcess = spawn(chromeExe, [
+      `--user-data-dir=${profilePath}`,
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--start-maximized',
+      site.loginUrl,
+    ], { stdio: 'ignore', detached: false });
+
+    await new Promise((resolve) => {
+      chromeProcess.on('exit', resolve);
+      chromeProcess.on('close', resolve);
+    });
+
+    log(`✅ Login window closed. Session saved to ${site.profile}!`);
+    log(`Now test your automated applications with: npm run dry-run:${SITE_ARG}`);
+    return;
+  }
+
+  if (TARGET <= 0) {
     log(`Daily cap of ${DAILY_CAP} applications reached (${dayState.count} today) — exiting.`);
     return;
   }
@@ -199,24 +231,19 @@ function buildInjection() {
     channel: 'chrome',
     headless: false,
     viewport: { width: 1280, height: 900 },
+    ignoreDefaultArgs: ['--enable-automation'],
     args: [
       '--disable-blink-features=AutomationControlled',
+      '--no-default-browser-check',
+      '--no-first-run',
       '--disable-backgrounding-occluded-windows',
       '--disable-renderer-backgrounding',
       '--disable-popup-blocking',
-      ...(LOGIN_MODE ? [] : ['--window-position=-32000,-32000']),
+      '--window-position=-32000,-32000',
     ],
   });
 
   const mainPage = ctx.pages()[0] || (await ctx.newPage());
-
-  if (LOGIN_MODE) {
-    await mainPage.goto(site.loginUrl, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
-    log(`Chrome is open — log in to ${site.name}, then CLOSE the browser window.`);
-    await new Promise((res) => ctx.on('close', res));
-    log(`Login session saved. Test with: npm run dry-run:${SITE_ARG}`);
-    return;
-  }
 
   log(`Starting ${site.name} Runner. Mode=${LIVE ? 'LIVE' : 'DRY RUN'}, Target=${TARGET}, Known Applied IDs=${Object.keys(appliedDb.appliedIds).length}`);
   const injection = buildInjection();

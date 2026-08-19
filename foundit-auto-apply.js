@@ -536,15 +536,26 @@
     job.score = matchResult.score;
     job.breakdown = matchResult.breakdown;
 
-    if (!job.applyBtn) {
-      log('  ⚠ No Apply button found on card — skipping');
+    job.cardEl.scrollIntoView({ block: 'center' });
+    await sleep(600);
+
+    let btn = job.applyBtn;
+    if (!btn) {
+      // Click card to open detail view / side drawer
+      const clickTarget = job.cardEl.querySelector('a, h3, h2, .jobTitle') || job.cardEl;
+      clickTarget.click();
+      await sleep(1800);
+      btn = findButtonByText(document, /^apply$|^quick apply$|^apply now$/i) ||
+            document.querySelector('.btn-apply, .applyBtn, [class*="applyBtn" i], .apply-btn');
+    }
+
+    if (!btn) {
+      log('  ⚠ No Apply button found on card or details view — skipping');
       appliedJobIds[job.id] = true;
       continue;
     }
 
-    job.cardEl.scrollIntoView({ block: 'center' });
-    await sleep(600);
-    job.applyBtn.click();
+    btn.click();
     await sleep(2000);
 
     const ok = await handleFounditModal(job);
