@@ -163,3 +163,5 @@ HIGHLIGHTS=Architected microfrontends reducing bundle size by 60%||Led team of 6
 | [`applications.csv`](file:///d:/MY-PROJECTS/Wellfound_AutoApply_WorkFlow/applications.csv) | Full audit log of submitted applications with Match Scores. |
 | [`.env`](file:///d:/MY-PROJECTS/Wellfound_AutoApply_WorkFlow/.env) | Your personal CV context, credentials, and Gemini API key. |
 
+
+Written By Yash
