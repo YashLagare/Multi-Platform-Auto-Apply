@@ -1,22 +1,30 @@
 {
-  "name": "wellfound-auto-apply",
-  "version": "1.0.0",
+  "name": "auto-apply-suite",
+  "version": "2.0.0",
   "main": "auto-apply-runner.js",
   "scripts": {
     "login": "node auto-apply-runner.js wellfound login",
     "dry-run": "node auto-apply-runner.js wellfound",
-    "apply": "node auto-apply-runner.js wellfound --live"
+    "apply": "node auto-apply-runner.js wellfound --live",
+    "login:wellfound": "node auto-apply-runner.js wellfound login",
+    "dry-run:wellfound": "node auto-apply-runner.js wellfound",
+    "apply:wellfound": "node auto-apply-runner.js wellfound --live",
+    "login:instahyre": "node auto-apply-runner.js instahyre login",
+    "dry-run:instahyre": "node auto-apply-runner.js instahyre",
+    "apply:instahyre": "node auto-apply-runner.js instahyre --live",
+    "test": "node test-decision-pipeline.js && node test-instahyre-pipeline.js"
   },
   "keywords": [
     "wellfound",
+    "instahyre",
     "playwright",
     "automation",
     "jobs",
     "auto-apply"
   ],
-  "author": "",
+  "author": "Yash Lagare",
   "license": "ISC",
-  "description": "Automatically applies to matching jobs on Wellfound with personalized cover letters and smart Q&A",
+  "description": "Unified Multi-Platform Auto-Apply Suite (Wellfound + Instahyre) with Two-Layer Decision Pipeline and Gemini AI",
   "dependencies": {
     "playwright-core": "^1.61.1",
     "playwright-extra": "^4.3.6",

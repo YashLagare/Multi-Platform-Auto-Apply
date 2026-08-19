@@ -1,11 +1,17 @@
 /**
- * Auto-Apply Runner — drives the console auto-apply script with Playwright & Stealth.
- * Manages persistent job ID database, daily quotas, rate-limiting, and CSV logging.
+ * Multi-Platform Auto-Apply Runner — Playwright Stealth Automation Suite
+ * Supports: Wellfound (wellfound.com) & Instahyre (instahyre.com)
  *
  * Usage:
- *   node auto-apply-runner.js wellfound login      one-time: visible Chrome opens — log in manually, then close window
- *   node auto-apply-runner.js wellfound            dry run: evaluates, fills forms, simulates submit
- *   node auto-apply-runner.js wellfound --live     applies for real & logs to CSV + applied-jobs.json
+ *   # Wellfound
+ *   node auto-apply-runner.js wellfound login
+ *   node auto-apply-runner.js wellfound
+ *   node auto-apply-runner.js wellfound --live
+ *
+ *   # Instahyre
+ *   node auto-apply-runner.js instahyre login
+ *   node auto-apply-runner.js instahyre
+ *   node auto-apply-runner.js instahyre --live
  */
 const path = require('path');
 const fs = require('fs');
@@ -23,12 +29,13 @@ try {
 process.on('unhandledRejection', (e) => console.log(`[${new Date().toLocaleString()}] unhandledRejection (ignored): ${String(e && e.message || e).split('\n')[0]}`));
 process.on('uncaughtException', (e) => console.log(`[${new Date().toLocaleString()}] uncaughtException (ignored): ${String(e && e.message || e).split('\n')[0]}`));
 
-const SITE_ARG = process.argv[2] || 'wellfound';
+const SITE_ARG = (process.argv[2] || 'wellfound').toLowerCase();
 const LOGIN_MODE = process.argv.includes('login');
 const LIVE = process.argv.includes('--live');
 
 const SITES = {
   wellfound: {
+    name: 'Wellfound',
     script: 'wellfound-auto-apply.js',
     profile: '.wellfound-chrome-profile',
     searches: ['https://wellfound.com/jobs'],
@@ -37,16 +44,26 @@ const SITES = {
     submittedRe: /application sent|DRY_RUN — would click/i,
     dailyCap: 50,
   },
+  instahyre: {
+    name: 'Instahyre',
+    script: 'instahyre-auto-apply.js',
+    profile: '.instahyre-chrome-profile',
+    searches: ['https://www.instahyre.com/candidate/opportunities/'],
+    loginUrl: 'https://www.instahyre.com/login',
+    injectOn: (url) => /instahyre\.com\/candidate\/opportunities/.test(url),
+    submittedRe: /application submitted|1-Click Apply submitted|DRY_RUN — would click/i,
+    dailyCap: 30,
+  },
 };
 
 const site = SITES[SITE_ARG];
 if (!site) {
-  console.log('Usage: node auto-apply-runner.js wellfound [login|--live]');
+  console.log('Usage: node auto-apply-runner.js <wellfound|instahyre> [login|--live]');
   process.exit(1);
 }
 
-// ======== Persistent Job ID Database (applied-jobs.json) ========
-const APPLIED_DB_FILE = path.join(__dirname, 'applied-jobs.json');
+// ======== Persistent Job ID Database ========
+const APPLIED_DB_FILE = path.join(__dirname, `applied-jobs-${SITE_ARG}.json`);
 const CSV_FILE = path.join(__dirname, 'applications.csv');
 
 function loadAppliedDatabase() {
@@ -57,14 +74,16 @@ function loadAppliedDatabase() {
     }
   } catch (e) {}
 
-  // Seed from applications.csv if any IDs are missing
+  // Seed from applications.csv if present
   try {
     if (fs.existsSync(CSV_FILE)) {
       const lines = fs.readFileSync(CSV_FILE, 'utf8').split(/\r?\n/);
       for (const line of lines) {
-        const m = line.match(/\/jobs\/(\d+)/);
-        if (m && m[1]) {
-          db.appliedIds[m[1]] = db.appliedIds[m[1]] || { date: 'historical', source: 'csv' };
+        if (line.includes(`"${SITE_ARG}"`)) {
+          const m = line.match(/\/jobs\/(\d+)/) || line.match(/https?:\/\/[^\s",]+/);
+          if (m && m[1]) {
+            db.appliedIds[m[1]] = db.appliedIds[m[1]] || { date: 'historical', source: 'csv' };
+          }
         }
       }
     }
@@ -82,17 +101,17 @@ function recordAppliedJob(jobId, jobData) {
     company: jobData.company || '',
     score: jobData.score || '',
     breakdown: jobData.breakdown || '',
-    link: jobData.link || `https://wellfound.com/jobs/${jobId}`,
+    link: jobData.link || (SITE_ARG === 'wellfound' ? `https://wellfound.com/jobs/${jobId}` : `https://www.instahyre.com/candidate/opportunities/${jobId}`),
   };
   try {
     fs.writeFileSync(APPLIED_DB_FILE, JSON.stringify(appliedDb, null, 2));
   } catch (e) {
-    console.error('Failed to write applied-jobs.json:', e.message);
+    console.error('Failed to write applied DB:', e.message);
   }
 }
 
 // Daily Cap Tracking
-const DAILY_CAP = site.dailyCap || 50;
+const DAILY_CAP = site.dailyCap || 30;
 const STATE_FILE = path.join(__dirname, `apply-state-${SITE_ARG}.json`);
 const todayKey = new Date().toDateString();
 let dayState = { date: todayKey, count: 0 };
@@ -127,11 +146,11 @@ function logApplication(job) {
     SITE_ARG,
     job.title,
     job.company,
-    job.salary,
-    job.skills || matchSkills(job.title + ' ' + (job.jd || '')),
+    job.salary || job.ctc || '',
+    job.skills || matchSkills(job.title + ' ' + (job.jd || job.description || '')),
     job.score ? `${job.score}/100` : '',
-    job.link,
-    (job.jd || '').slice(0, 1200),
+    job.link || (SITE_ARG === 'wellfound' ? `https://wellfound.com/jobs/${job.id}` : `https://www.instahyre.com/candidate/opportunities/${job.id}`),
+    (job.jd || job.description || '').slice(0, 1200),
   ]));
 }
 
@@ -173,13 +192,13 @@ function buildInjection() {
 
   if (LOGIN_MODE) {
     await mainPage.goto(site.loginUrl, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
-    log('Chrome is open — log in to Wellfound, then CLOSE the browser window.');
+    log(`Chrome is open — log in to ${site.name}, then CLOSE the browser window.`);
     await new Promise((res) => ctx.on('close', res));
-    log('Login session saved. Test with: npm run dry-run');
+    log(`Login session saved. Test with: npm run dry-run:${SITE_ARG}`);
     return;
   }
 
-  log(`Starting Decision Pipeline Runner. Mode=${LIVE ? 'LIVE' : 'DRY RUN'}, Target=${TARGET}, Known Applied IDs=${Object.keys(appliedDb.appliedIds).length}`);
+  log(`Starting ${site.name} Runner. Mode=${LIVE ? 'LIVE' : 'DRY RUN'}, Target=${TARGET}, Known Applied IDs=${Object.keys(appliedDb.appliedIds).length}`);
   const injection = buildInjection();
   const deadline = Date.now() + MAX_RUNTIME_MS;
   let submitted = 0;
@@ -191,24 +210,25 @@ function buildInjection() {
   function wire(page) {
     page.on('console', (msg) => {
       const text = msg.text();
-      if (!/auto-apply/.test(text)) return;
+      if (!/auto-apply|instahyre-apply/.test(text)) return;
       lastActivity = Date.now();
-      const clean = text.replace(/%c\[auto-apply\]\s*\S*/, '').trim();
+      const clean = text.replace(/%c\[(?:auto-apply|instahyre-apply)\]\s*\S*/, '').trim();
       log('  ' + clean.slice(0, 160));
 
       // Capture job evaluation info
       const mEval = clean.match(/▶ Evaluating: (.+)/);
       if (mEval) {
-        const [main, linkPart, idPart] = mEval[1].split(' | ');
-        const atParts = main.split(' @ ');
+        const parts = mEval[1].split(' | ');
+        const atParts = parts[0].split(' @ ');
         const company = atParts.length > 1 ? atParts.pop() : '';
         const title = atParts.join(' @ ');
-        const jobId = (idPart || '').replace('Job ID:', '').trim() || (linkPart || '').match(/\/jobs\/(\d+)/)?.[1] || '';
+        const idPart = parts.find((p) => p.includes('ID:') || p.includes('jobs/'));
+        const jobId = idPart?.replace(/Job ID:|ID:/, '').trim() || idPart?.match(/\/jobs\/(\d+)/)?.[1] || '';
         pendingJob = {
           id: jobId,
           title: title.trim(),
           company: (company || '').replace(/^\?$/, '').trim(),
-          link: (linkPart || '').trim(),
+          link: (parts[1] || '').trim(),
           salary: '',
           skills: '',
           jd: '',
@@ -218,7 +238,7 @@ function buildInjection() {
       }
 
       // Capture score
-      const mScore = clean.match(/Evaluation Score: (\d+)\/100/);
+      const mScore = clean.match(/(?:Evaluation Score|Score): (\d+)\/100/);
       if (mScore && pendingJob) {
         pendingJob.score = mScore[1];
       }
