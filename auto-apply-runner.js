@@ -69,7 +69,7 @@ const SITES = {
       'https://www.foundit.in/srp/results?query=full+stack+developer&sort=1',
       'https://www.foundit.in/srp/results?query=next.js+developer&sort=1',
     ],
-    loginUrl: 'https://www.foundit.in/rio/login',
+    loginUrl: 'https://www.foundit.in/login',
     injectOn: (url) => /foundit\.in\/(?:srp|job)/.test(url),
     submittedRe: /application submitted|Quick Apply submitted|DRY_RUN — would click/i,
     dailyCap: 30,
