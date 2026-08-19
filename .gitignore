@@ -28,13 +28,15 @@ blocked-step-*.png
 *.jpg
 *.jpeg
 
-# Application Logs & State
+# Application Logs & State (Personal History)
 *.log
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 *.csv
 apply-state-*.json
+applied-jobs-*.json
+applied-jobs.json
 *.tmp
 *.temp
 
