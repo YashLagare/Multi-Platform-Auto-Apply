@@ -111,6 +111,47 @@ Runs 8 test cases verifying that Co-Founders, Wise-style 2–5 yr ranges, non-pr
 
 ---
 
+## ⚙️ Customizing for Senior Developers & Tech Leads (4+ Years Exp)
+
+By default, this repository is pre-configured for **Early-Career / Associate developers (0–3 years)**. If you are a **Senior Engineer, Tech Lead, Staff/Principal Engineer, or Architect (4+ years)** and want to use this workflow, make the following quick adjustments in [`wellfound-auto-apply.js`](file:///d:/MY-PROJECTS/Wellfound_AutoApply_WorkFlow/wellfound-auto-apply.js):
+
+### 1. Remove Senior Titles from Hard Exclusions
+In [`wellfound-auto-apply.js`](file:///d:/MY-PROJECTS/Wellfound_AutoApply_WorkFlow/wellfound-auto-apply.js#L30-L50), remove the Seniority block from `TITLE_HARD_EXCLUSIONS`:
+```javascript
+// Remove or comment out these lines if you want Senior/Lead roles:
+// /\bsenior\b|\bsr\.?\b/i,
+// /\blead\b/i,
+// /\bprincipal\b/i,
+// /\bstaff\b/i,
+// /\barchitect\b/i,
+```
+
+### 2. Add Senior Roles to Target List
+In `TARGET_ROLE_PATTERNS`, add senior keywords:
+```javascript
+const TARGET_ROLE_PATTERNS = [
+  /\bsenior\s+frontend\b|\bsr\.?\s*frontend\b/i,
+  /\bsenior\s+full\s*stack\b|\blead\s+engineer\b/i,
+  /\btech\s*lead\b|\bstaff\s+engineer\b|\bprincipal\s+engineer\b/i,
+  // ... existing patterns
+];
+```
+
+### 3. Invert Experience Filtering in `checkExperienceExclusion`
+In `checkExperienceExclusion(jdText)`:
+- Remove the rejection for `4+`, `5+`, `6+` years.
+- Optionally add a check to **skip junior roles** (e.g. `0-1 yrs`, `internships`) so you only apply to senior positions.
+
+### 4. Update Your Profile in `.env`
+Update your `.env` file:
+```ini
+CURRENT_ROLE=Senior Frontend Engineer at TechCorp
+YEARS_EXPERIENCE=5+ years of production experience building scalable systems
+HIGHLIGHTS=Architected microfrontends reducing bundle size by 60%||Led team of 6 engineers...
+```
+
+---
+
 ## 📁 Key Project Files
 
 | File | Description |
@@ -121,3 +162,4 @@ Runs 8 test cases verifying that Co-Founders, Wise-style 2–5 yr ranges, non-pr
 | [`test-decision-pipeline.js`](file:///d:/MY-PROJECTS/Wellfound_AutoApply_WorkFlow/test-decision-pipeline.js) | Unit test suite covering positive & negative decision criteria. |
 | [`applications.csv`](file:///d:/MY-PROJECTS/Wellfound_AutoApply_WorkFlow/applications.csv) | Full audit log of submitted applications with Match Scores. |
 | [`.env`](file:///d:/MY-PROJECTS/Wellfound_AutoApply_WorkFlow/.env) | Your personal CV context, credentials, and Gemini API key. |
+
