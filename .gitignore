@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment configuration
+.env
+.env.local
+.env.*.local
+
+# Saved Chrome Sessions
+.*-chrome-profile/
+.wellfound-chrome-profile/
+.indeed-chrome-profile/
+.naukri-chrome-profile/
+.naukri-apply-profile/
+
+# Logs, Application State & Output
+*.log
+*.csv
+apply-state-*.json
+blocked-step-*.png
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

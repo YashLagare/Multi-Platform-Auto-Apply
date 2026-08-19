@@ -1,0 +1,25 @@
+{
+  "name": "wellfound-auto-apply",
+  "version": "1.0.0",
+  "main": "auto-apply-runner.js",
+  "scripts": {
+    "login": "node auto-apply-runner.js wellfound login",
+    "dry-run": "node auto-apply-runner.js wellfound",
+    "apply": "node auto-apply-runner.js wellfound --live"
+  },
+  "keywords": [
+    "wellfound",
+    "playwright",
+    "automation",
+    "jobs",
+    "auto-apply"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "Automatically applies to matching jobs on Wellfound with personalized cover letters and smart Q&A",
+  "dependencies": {
+    "playwright-core": "^1.61.1",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}
