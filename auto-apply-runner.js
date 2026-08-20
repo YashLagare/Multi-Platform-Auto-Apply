@@ -1,6 +1,6 @@
 /**
  * Multi-Platform Auto-Apply Runner — Playwright Stealth Automation Suite
- * Supports: Wellfound (wellfound.com), Instahyre (instahyre.com), Foundit (foundit.in)
+ * Supports: Wellfound (wellfound.com), Instahyre (instahyre.com), Foundit (foundit.in), Naukri (naukri.com)
  *
  * Usage:
  *   # Wellfound
@@ -17,6 +17,11 @@
  *   node auto-apply-runner.js foundit login
  *   node auto-apply-runner.js foundit
  *   node auto-apply-runner.js foundit --live
+ *
+ *   # Naukri
+ *   node auto-apply-runner.js naukri login
+ *   node auto-apply-runner.js naukri
+ *   node auto-apply-runner.js naukri --live
  */
 const path = require('path');
 const fs = require('fs');
@@ -74,11 +79,26 @@ const SITES = {
     submittedRe: /application submitted|Quick Apply submitted|DRY_RUN — would click/i,
     dailyCap: 30,
   },
+  naukri: {
+    name: 'Naukri',
+    script: 'naukri-auto-apply.js',
+    profile: '.naukri-chrome-profile',
+    searches: [
+      'https://www.naukri.com/react-js-developer-jobs',
+      'https://www.naukri.com/frontend-developer-jobs',
+      'https://www.naukri.com/full-stack-developer-jobs',
+      'https://www.naukri.com/next-js-developer-jobs',
+    ],
+    loginUrl: 'https://www.naukri.com/nlogin/login',
+    injectOn: (url) => /naukri\.com/.test(url),
+    submittedRe: /application submitted|Direct 1-Click Apply submitted|DRY_RUN — would click/i,
+    dailyCap: 30,
+  },
 };
 
 const site = SITES[SITE_ARG];
 if (!site) {
-  console.log('Usage: node auto-apply-runner.js <wellfound|instahyre|foundit> [login|--live]');
+  console.log('Usage: node auto-apply-runner.js <wellfound|instahyre|foundit|naukri> [login|--live]');
   process.exit(1);
 }
 
@@ -121,7 +141,12 @@ function recordAppliedJob(jobId, jobData) {
     company: jobData.company || '',
     score: jobData.score || '',
     breakdown: jobData.breakdown || '',
-    link: jobData.link || (SITE_ARG === 'wellfound' ? `https://wellfound.com/jobs/${jobId}` : SITE_ARG === 'instahyre' ? `https://www.instahyre.com/candidate/opportunities/${jobId}` : `https://www.foundit.in/job/${jobId}`),
+    link: jobData.link || (
+      SITE_ARG === 'wellfound' ? `https://wellfound.com/jobs/${jobId}` :
+      SITE_ARG === 'instahyre' ? `https://www.instahyre.com/candidate/opportunities/${jobId}` :
+      SITE_ARG === 'foundit' ? `https://www.foundit.in/job/${jobId}` :
+      `https://www.naukri.com/job-listings-${jobId}`
+    ),
   };
   try {
     fs.writeFileSync(APPLIED_DB_FILE, JSON.stringify(appliedDb, null, 2));
@@ -169,7 +194,12 @@ function logApplication(job) {
     job.salary || job.ctc || '',
     job.skills || matchSkills(job.title + ' ' + (job.jd || job.description || '')),
     job.score ? `${job.score}/100` : '',
-    job.link || (SITE_ARG === 'wellfound' ? `https://wellfound.com/jobs/${job.id}` : SITE_ARG === 'instahyre' ? `https://www.instahyre.com/candidate/opportunities/${job.id}` : `https://www.foundit.in/job/${job.id}`),
+    job.link || (
+      SITE_ARG === 'wellfound' ? `https://wellfound.com/jobs/${job.id}` :
+      SITE_ARG === 'instahyre' ? `https://www.instahyre.com/candidate/opportunities/${job.id}` :
+      SITE_ARG === 'foundit' ? `https://www.foundit.in/job/${job.id}` :
+      `https://www.naukri.com/job-listings-${job.id}`
+    ),
     (job.jd || job.description || '').slice(0, 1200),
   ]));
 }
@@ -202,7 +232,7 @@ function buildInjection() {
 
     log(`Opening Native Chrome for ${site.name} login...`);
     log(`Profile Directory: ${profilePath}`);
-    log(`👉 Log in with Google or Mobile/Email + OTP. When finished, CLOSE the browser window.`);
+    log(`👉 Log in with Google or Mobile/Email + OTP / Password. When finished, CLOSE the browser window.`);
 
     const chromeProcess = spawn(chromeExe, [
       `--user-data-dir=${profilePath}`,
@@ -257,9 +287,9 @@ function buildInjection() {
   function wire(page) {
     page.on('console', (msg) => {
       const text = msg.text();
-      if (!/auto-apply|instahyre-apply|foundit-apply/.test(text)) return;
+      if (!/auto-apply|instahyre-apply|foundit-apply|naukri-apply/.test(text)) return;
       lastActivity = Date.now();
-      const clean = text.replace(/%c\[(?:auto-apply|instahyre-apply|foundit-apply)\]\s*\S*/, '').trim();
+      const clean = text.replace(/%c\[(?:auto-apply|instahyre-apply|foundit-apply|naukri-apply)\]\s*\S*/, '').trim();
       log('  ' + clean.slice(0, 160));
 
       // Capture job evaluation info
@@ -270,7 +300,7 @@ function buildInjection() {
         const company = atParts.length > 1 ? atParts.pop() : '';
         const title = atParts.join(' @ ');
         const idPart = parts.find((p) => p.includes('ID:') || p.includes('jobs/') || p.includes('job/'));
-        const jobId = idPart?.replace(/Job ID:|ID:/, '').trim() || idPart?.match(/(?:\/jobs\/|\/job\/)([^\/?#]+)/)?.[1] || '';
+        const jobId = idPart?.replace(/Job ID:|ID:/, '').trim() || idPart?.match(/(?:\/jobs\/|\/job\/|\/job-listings-|-)(\d+)/)?.[1] || '';
         pendingJob = {
           id: jobId,
           title: title.trim(),

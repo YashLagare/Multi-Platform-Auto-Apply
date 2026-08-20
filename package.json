@@ -1,6 +1,6 @@
 {
   "name": "auto-apply-suite",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "main": "auto-apply-runner.js",
   "scripts": {
     "login": "node auto-apply-runner.js wellfound login",
@@ -15,13 +15,16 @@
     "login:foundit": "node auto-apply-runner.js foundit login",
     "dry-run:foundit": "node auto-apply-runner.js foundit",
     "apply:foundit": "node auto-apply-runner.js foundit --live",
-    "test": "node test-decision-pipeline.js && node test-instahyre-pipeline.js && node test-foundit-pipeline.js"
+    "login:naukri": "node auto-apply-runner.js naukri login",
+    "dry-run:naukri": "node auto-apply-runner.js naukri",
+    "apply:naukri": "node auto-apply-runner.js naukri --live",
+    "test": "node test-decision-pipeline.js && node test-instahyre-pipeline.js && node test-foundit-pipeline.js && node test-naukri-pipeline.js"
   },
   "keywords": [
     "wellfound",
     "instahyre",
     "foundit",
-    "monster",
+    "naukri",
     "playwright",
     "automation",
     "jobs",
@@ -29,7 +32,7 @@
   ],
   "author": "Yash Lagare",
   "license": "ISC",
-  "description": "Unified Multi-Platform Auto-Apply Suite (Wellfound + Instahyre + Foundit) with Two-Layer Decision Pipeline and Gemini AI",
+  "description": "Unified Multi-Platform Auto-Apply Suite (Wellfound + Instahyre + Foundit + Naukri) with Two-Layer Decision Pipeline and Gemini AI",
   "dependencies": {
     "playwright-core": "^1.61.1",
     "playwright-extra": "^4.3.6",
