@@ -1,5 +1,5 @@
-/**
- * Multi-Platform Auto-Apply Runner — Playwright Stealth Automation Suite
+﻿/**
+ * Multi-Platform Auto-Apply Runner â€” Playwright Stealth Automation Suite
  * Supports: Wellfound (wellfound.com), Instahyre (instahyre.com), Foundit (foundit.in), Naukri (naukri.com)
  *
  * Usage:
@@ -59,7 +59,7 @@ const SITES = {
     searches: ["https://wellfound.com/jobs"],
     loginUrl: "https://wellfound.com/login",
     injectOn: (url) => /wellfound\.com/.test(url),
-    submittedRe: /application sent|DRY_RUN — would click/i,
+    submittedRe: /application sent|DRY_RUN â€” would click/i,
     dailyCap: 50,
   },
   instahyre: {
@@ -70,7 +70,7 @@ const SITES = {
     loginUrl: "https://www.instahyre.com/login",
     injectOn: (url) => /instahyre\.com\/candidate\/opportunities/.test(url),
     submittedRe:
-      /application submitted|1-Click Apply submitted|DRY_RUN — would click/i,
+      /application submitted|1-Click Apply submitted|DRY_RUN â€” would click/i,
     dailyCap: 30,
   },
   foundit: {
@@ -78,19 +78,19 @@ const SITES = {
     script: "foundit-auto-apply.js",
     profile: ".foundit-chrome-profile",
     searches: [
-      "https://www.foundit.in/srp/results?query=react+developer&sort=1",
-      "https://www.foundit.in/srp/results?query=frontend+developer&sort=1",
-      "https://www.foundit.in/srp/results?query=full+stack+developer&sort=1",
-      "https://www.foundit.in/srp/results?query=next.js+developer&sort=1",
-      "https://www.foundit.in/srp/results?query=javascript+developer&sort=1",
-      "https://www.foundit.in/srp/results?query=mern+stack+developer&sort=1",
-      "https://www.foundit.in/srp/results?query=software+engineer&sort=1",
+      "https://www.foundit.in/srp/results?query=react+developer&experienceRanges=0~3&sort=1",
+      "https://www.foundit.in/srp/results?query=frontend+developer&experienceRanges=0~3&sort=1",
+      "https://www.foundit.in/srp/results?query=full+stack+developer&experienceRanges=0~3&sort=1",
+      "https://www.foundit.in/srp/results?query=next.js+developer&experienceRanges=0~3&sort=1",
+      "https://www.foundit.in/srp/results?query=javascript+developer&experienceRanges=0~3&sort=1",
+      "https://www.foundit.in/srp/results?query=mern+stack+developer&experienceRanges=0~3&sort=1",
+      "https://www.foundit.in/srp/results?query=software+engineer&experienceRanges=0~3&sort=1",
     ],
     loginUrl:
       "https://www.foundit.in/rio/login?return_url=%2Fseeker%2Fprofile%3Fviewport%3Ddesktop",
     injectOn: (url) => /foundit\.in\/(?:srp|job)/.test(url),
     submittedRe:
-      /application submitted|Quick Apply submitted|DRY_RUN — would click/i,
+      /application submitted|Quick Apply submitted|DRY_RUN â€” would click/i,
     dailyCap: 30,
   },
   naukri: {
@@ -98,19 +98,19 @@ const SITES = {
     script: "naukri-auto-apply.js",
     profile: ".naukri-chrome-profile",
     searches: [
-      "https://www.naukri.com/react-js-developer-jobs",
-      "https://www.naukri.com/frontend-developer-jobs",
-      "https://www.naukri.com/full-stack-developer-jobs",
-      "https://www.naukri.com/next-js-developer-jobs",
-      "https://www.naukri.com/javascript-developer-jobs",
-      "https://www.naukri.com/mern-stack-developer-jobs",
-      "https://www.naukri.com/software-engineer-jobs",
-      "https://www.naukri.com/web-developer-jobs",
+      "https://www.naukri.com/react-js-developer-jobs?experience=0&experience=1&experience=2&experience=3",
+      "https://www.naukri.com/frontend-developer-jobs?experience=0&experience=1&experience=2&experience=3",
+      "https://www.naukri.com/full-stack-developer-jobs?experience=0&experience=1&experience=2&experience=3",
+      "https://www.naukri.com/next-js-developer-jobs?experience=0&experience=1&experience=2&experience=3",
+      "https://www.naukri.com/javascript-developer-jobs?experience=0&experience=1&experience=2&experience=3",
+      "https://www.naukri.com/mern-stack-developer-jobs?experience=0&experience=1&experience=2&experience=3",
+      "https://www.naukri.com/software-engineer-jobs?experience=0&experience=1&experience=2&experience=3",
+      "https://www.naukri.com/web-developer-jobs?experience=0&experience=1&experience=2&experience=3",
     ],
     loginUrl: "https://www.naukri.com/nlogin/login",
     injectOn: (url) => /naukri\.com/.test(url),
     submittedRe:
-      /application submitted|Direct 1-Click Apply submitted|DRY_RUN — would click/i,
+      /application submitted|Direct 1-Click Apply submitted|DRY_RUN â€” would click/i,
     dailyCap: 30,
   },
 };
@@ -132,7 +132,7 @@ function loadAppliedDatabase() {
   try {
     if (fs.existsSync(APPLIED_DB_FILE)) {
       db = JSON.parse(
-        fs.readFileSync(APPLIED_DB_FILE, "utf8").replace(/^﻿/, ""),
+        fs.readFileSync(APPLIED_DB_FILE, "utf8").replace(/^ï»¿/, ""),
       );
     }
   } catch (e) {}
@@ -191,7 +191,7 @@ const STATE_FILE = path.join(__dirname, `apply-state-${SITE_ARG}.json`);
 const todayKey = new Date().toDateString();
 let dayState = { date: todayKey, count: 0 };
 try {
-  const s = JSON.parse(fs.readFileSync(STATE_FILE, "utf8").replace(/^﻿/, ""));
+  const s = JSON.parse(fs.readFileSync(STATE_FILE, "utf8").replace(/^ï»¿/, ""));
   if (s.date === todayKey) dayState = s;
 } catch (e) {}
 const bumpDayCount = () => {
@@ -248,7 +248,7 @@ function logApplication(job) {
   if (!fs.existsSync(CSV_FILE)) {
     fs.writeFileSync(
       CSV_FILE,
-      "﻿" +
+      "ï»¿" +
         csvRow([
           "Date",
           "Site",
@@ -318,7 +318,7 @@ function buildInjection() {
     log(`Opening Native Chrome for ${site.name} login...`);
     log(`Profile Directory: ${profilePath}`);
     log(
-      `👉 Log in with Google or Mobile/Email + OTP / Password. When finished, CLOSE the browser window.`,
+      `ðŸ‘‰ Log in with Google or Mobile/Email + OTP / Password. When finished, CLOSE the browser window.`,
     );
 
     const chromeProcess = spawn(
@@ -338,7 +338,7 @@ function buildInjection() {
       chromeProcess.on("close", resolve);
     });
 
-    log(`✅ Login window closed. Session saved to ${site.profile}!`);
+    log(`âœ… Login window closed. Session saved to ${site.profile}!`);
     log(
       `Now test your automated applications with: npm run dry-run:${SITE_ARG}`,
     );
@@ -347,7 +347,7 @@ function buildInjection() {
 
   if (TARGET <= 0) {
     log(
-      `Daily cap of ${DAILY_CAP} applications reached (${dayState.count} today) — exiting.`,
+      `Daily cap of ${DAILY_CAP} applications reached (${dayState.count} today) â€” exiting.`,
     );
     return;
   }
@@ -399,7 +399,7 @@ function buildInjection() {
       log("  " + clean.slice(0, 160));
 
       // Capture job evaluation info
-      const mEval = clean.match(/▶ Evaluating: (.+)/);
+      const mEval = clean.match(/â–¶ Evaluating: (.+)/);
       if (mEval) {
         const parts = mEval[1].split(" | ");
         const atParts = parts[0].split(" @ ");
@@ -507,3 +507,4 @@ function buildInjection() {
   log("FATAL: " + e.message.split("\n")[0]);
   process.exit(1);
 });
+
