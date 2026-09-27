@@ -1,4 +1,4 @@
-# Multi-Platform Auto-Apply Suite (Wellfound + Instahyre + Foundit + Naukri)
+﻿# Multi-Platform Auto-Apply Suite (Wellfound + Instahyre + Foundit + Naukri)
 
 A unified, precision-first automated job application suite for **Wellfound** (formerly AngelList Talent), **Instahyre** (`instahyre.com`), **Foundit** (`foundit.in`, formerly Monster India), and **Naukri.com** (`naukri.com`).
 Built with **Node.js, Playwright Stealth, and Google Gemini AI**, it features an intelligent **Two-Layer Decision Pipeline** that evaluates full job requirements, enforces strict hard exclusions, prevents duplicate applications permanently across sessions, and calculates a multi-factor match score (0–100) before applying.
@@ -11,8 +11,8 @@ Built with **Node.js, Playwright Stealth, and Google Gemini AI**, it features an
 |---|---|---|---|
 | **Wellfound** | `wellfound.com` | Feed Infinite Scroll + Custom Cover Letters + Screening Q&A | `.wellfound-chrome-profile/` |
 | **Instahyre** | `instahyre.com` | Opportunities Feed + 1-Click Apply + Questionnaire/Note Modals | `.instahyre-chrome-profile/` |
-| **Foundit** | `foundit.in` | Search Result Pages + Quick Apply + Screening Questionnaires | `.foundit-chrome-profile/` |
-| **Naukri** | `naukri.com` | Search Tuples + Direct 1-Click Apply + Chatbot Modals | `.naukri-chrome-profile/` |
+| **Foundit** | `foundit.in` | Pre-filtered SRP Search + Quick Apply + Screening Questionnaires | `.foundit-chrome-profile/` |
+| **Naukri** | `naukri.com` | Pre-filtered Search Tuples + Direct 1-Click Apply + Chatbot Modals | `.naukri-chrome-profile/` |
 
 ```text
 [Job / Candidate Opportunity Found]
@@ -63,7 +63,12 @@ Built with **Node.js, Playwright Stealth, and Google Gemini AI**, it features an
 - ✅ **Allowed:** `0–1 yrs`, `0–2 yrs`, `1–3 yrs`, `Entry Level`, `Associate`, `Junior`.
 - ❌ **Hard Rejected:** `4+ yrs`, `5+ yrs`, and senior ranges like `2–5 years`, `3–5 years`, `3–6 years`, `4–8 years`.
 
-### 4. Location Hierarchy
+### 4. Search-Level Pre-Filtering (High Yield)
+Search URLs automatically include experience bounds to pre-filter job portal feeds before browser page load:
+- **Naukri Feeds:** `?experience=0&experience=1&experience=2&experience=3`
+- **Foundit Feeds:** `&experienceRanges=0~3`
+
+### 5. Location Hierarchy
 - **Priority 1:** Bengaluru, Pune, Hyderabad *(Remote, Hybrid, On-site)*
 - **Priority 2:** Remote (India), Mumbai, Chennai, Gurgaon / Gurugram, Noida / Delhi NCR *(Remote, Hybrid, On-site)*
 - **Priority 3:** Ahmedabad *(Remote, Hybrid, On-site)*
@@ -115,6 +120,15 @@ npm run apply:naukri         # Step 3: Apply live for real
 
 ---
 
+## 📊 Analytics & Reporting
+
+View your live application summary and platform breakdown anytime:
+```powershell
+npm run stats
+```
+
+---
+
 ## 🧪 Testing & Verification
 
 Run the built-in diagnostic test suites anytime:
@@ -149,13 +163,14 @@ If you are a **Senior Engineer, Tech Lead, Staff/Principal Engineer, or Architec
 
 | File | Description |
 |---|---|
-| [`naukri-auto-apply.js`](file:///d:/MY-PROJECTS/Wellfound_AutoApply_WorkFlow/naukri-auto-apply.js) | Core Naukri engine: Two-layer pipeline, 1-click & Chatbot automation, and Gemini AI. |
-| [`foundit-auto-apply.js`](file:///d:/MY-PROJECTS/Wellfound_AutoApply_WorkFlow/foundit-auto-apply.js) | Core Foundit engine: Two-layer pipeline, Quick Apply & modal automation, and Gemini AI. |
-| [`instahyre-auto-apply.js`](file:///d:/MY-PROJECTS/Wellfound_AutoApply_WorkFlow/instahyre-auto-apply.js) | Core Instahyre engine: Two-layer pipeline, 1-click & modal automation, and Gemini AI. |
-| [`wellfound-auto-apply.js`](file:///d:/MY-PROJECTS/Wellfound_AutoApply_WorkFlow/wellfound-auto-apply.js) | Core Wellfound engine: Two-layer pipeline, JD scraping, and cover letter generator. |
-| [`auto-apply-runner.js`](file:///d:/MY-PROJECTS/Wellfound_AutoApply_WorkFlow/auto-apply-runner.js) | Playwright Stealth supervisor managing multi-platform sessions, search rotations, and tracking. |
-| [`applications.csv`](file:///d:/MY-PROJECTS/Wellfound_AutoApply_WorkFlow/applications.csv) | Unified application history log across all platforms with Match Scores (git-ignored). |
-| [`.env`](file:///d:/MY-PROJECTS/Wellfound_AutoApply_WorkFlow/.env) | Shared CV context, credentials, and Gemini API key (git-ignored). |
+| [`naukri-auto-apply.js`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/naukri-auto-apply.js) | Core Naukri engine: Two-layer pipeline, 1-click & Chatbot automation, and Gemini AI. |
+| [`foundit-auto-apply.js`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/foundit-auto-apply.js) | Core Foundit engine: Two-layer pipeline, Quick Apply & modal automation, and Gemini AI. |
+| [`instahyre-auto-apply.js`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/instahyre-auto-apply.js) | Core Instahyre engine: Two-layer pipeline, 1-click & modal automation, and Gemini AI. |
+| [`wellfound-auto-apply.js`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/wellfound-auto-apply.js) | Core Wellfound engine: Two-layer pipeline, JD scraping, and cover letter generator. |
+| [`auto-apply-runner.js`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/auto-apply-runner.js) | Playwright Stealth supervisor managing multi-platform sessions, search rotations, and tracking. |
+| [`stats.js`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/stats.js) | CLI Analytics dashboard for viewing live application metrics and recent submissions. |
+| [`applications.csv`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/applications.csv) | Unified application history log across all platforms with Match Scores (git-ignored). |
+| [`.env`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/.env) | Shared CV context, credentials, and Gemini API key (git-ignored). |
 
 ---
 
