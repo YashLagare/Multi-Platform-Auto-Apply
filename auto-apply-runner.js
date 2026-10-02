@@ -155,7 +155,8 @@ const SITES = {
     searches: [
       "https://www.workatastartup.com/jobs?roles=frontend,fullstack&role=Frontend%20Engineer&role=Full%20Stack%20Engineer",
     ],
-    loginUrl: "https://www.workatastartup.com/login",
+    loginUrl:
+      "https://account.ycombinator.com/?continue=https%3A%2F%2Fwww.workatastartup.com%2F",
     injectOn: (url) => /workatastartup\.com/.test(url),
     submittedRe:
       /YC Application submitted|application sent|DRY_RUN — would click/i,
