@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Application Suite Statistics & Analytics Reporter
  * Reads applications.csv and generates a clean CLI summary.
  * Usage: node stats.js
@@ -57,10 +57,22 @@ for (const r of records) {
   }
 }
 
+const PLATFORM_ICONS = {
+  wellfound: '🔵',
+  instahyre: '🟢',
+  foundit: '🔴',
+  naukri: '🔷',
+  cutshort: '🟠',
+  hirist: '⚡',
+  yc: '🟧',
+  indeed: '🌐',
+  linkedin: '💼',
+};
+
 console.log('🏛 Applications by Platform:');
 for (const [p, count] of Object.entries(byPlatform)) {
-  const icon = p === 'wellfound' ? '🔵' : p === 'instahyre' ? '🟢' : p === 'foundit' ? '🔴' : '🔷';
-  console.log(`  ${icon} ${p.toUpperCase().padEnd(10)} : ${count} applications`);
+  const icon = PLATFORM_ICONS[p] || '🔹';
+  console.log(`  ${icon} ${p.toUpperCase().padEnd(12)} : ${count} applications`);
 }
 
 const avgScore = scoreCount ? Math.round(totalScore / scoreCount) : 0;

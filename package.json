@@ -1,6 +1,6 @@
-﻿{
+{
   "name": "auto-apply-suite",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "main": "auto-apply-runner.js",
   "scripts": {
     "login": "node auto-apply-runner.js wellfound login",
@@ -18,14 +18,34 @@
     "login:naukri": "node auto-apply-runner.js naukri login",
     "dry-run:naukri": "node auto-apply-runner.js naukri",
     "apply:naukri": "node auto-apply-runner.js naukri --live",
+    "login:cutshort": "node auto-apply-runner.js cutshort login",
+    "dry-run:cutshort": "node auto-apply-runner.js cutshort",
+    "apply:cutshort": "node auto-apply-runner.js cutshort --live",
+    "login:hirist": "node auto-apply-runner.js hirist login",
+    "dry-run:hirist": "node auto-apply-runner.js hirist",
+    "apply:hirist": "node auto-apply-runner.js hirist --live",
+    "login:yc": "node auto-apply-runner.js yc login",
+    "dry-run:yc": "node auto-apply-runner.js yc",
+    "apply:yc": "node auto-apply-runner.js yc --live",
+    "login:indeed": "node auto-apply-runner.js indeed login",
+    "dry-run:indeed": "node auto-apply-runner.js indeed",
+    "apply:indeed": "node auto-apply-runner.js indeed --live",
+    "login:linkedin": "node auto-apply-runner.js linkedin login",
+    "dry-run:linkedin": "node auto-apply-runner.js linkedin",
+    "apply:linkedin": "node auto-apply-runner.js linkedin --live",
     "stats": "node stats.js",
-    "test": "node test-decision-pipeline.js && node test-instahyre-pipeline.js && node test-foundit-pipeline.js && node test-naukri-pipeline.js"
+    "test": "node test-decision-pipeline.js && node test-instahyre-pipeline.js && node test-foundit-pipeline.js && node test-naukri-pipeline.js && node test-cutshort-pipeline.js && node test-hirist-pipeline.js && node test-yc-pipeline.js && node test-indeed-pipeline.js && node test-linkedin-pipeline.js"
   },
   "keywords": [
     "wellfound",
     "instahyre",
     "foundit",
     "naukri",
+    "cutshort",
+    "hirist",
+    "yc",
+    "indeed",
+    "linkedin",
     "playwright",
     "automation",
     "jobs",
@@ -33,7 +53,7 @@
   ],
   "author": "Yash Lagare",
   "license": "ISC",
-  "description": "Unified Multi-Platform Auto-Apply Suite (Wellfound + Instahyre + Foundit + Naukri) with Two-Layer Decision Pipeline and Gemini AI",
+  "description": "Unified 9-Platform Auto-Apply Suite (Wellfound + Instahyre + Foundit + Naukri + Cutshort + Hirist + YC + Indeed + LinkedIn) with Two-Layer Decision Pipeline and Gemini AI",
   "dependencies": {
     "playwright-core": "^1.61.1",
     "playwright-extra": "^4.3.6",

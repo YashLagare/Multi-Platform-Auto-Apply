@@ -1,6 +1,6 @@
-﻿# Multi-Platform Auto-Apply Suite (Wellfound + Instahyre + Foundit + Naukri)
+# Multi-Platform Auto-Apply Suite (Wellfound + Instahyre + Foundit + Naukri + Cutshort + Hirist + YC + Indeed + LinkedIn)
 
-A unified, precision-first automated job application suite for **Wellfound** (formerly AngelList Talent), **Instahyre** (`instahyre.com`), **Foundit** (`foundit.in`, formerly Monster India), and **Naukri.com** (`naukri.com`).
+A unified, precision-first automated job application suite for **Wellfound**, **Instahyre**, **Foundit**, **Naukri**, **Cutshort**, **Hirist**, **YC Work at a Startup**, **Indeed India**, and **LinkedIn Easy Apply**.
 Built with **Node.js, Playwright Stealth, and Google Gemini AI**, it features an intelligent **Two-Layer Decision Pipeline** that evaluates full job requirements, enforces strict hard exclusions, prevents duplicate applications permanently across sessions, and calculates a multi-factor match score (0–100) before applying.
 
 ---
@@ -13,6 +13,11 @@ Built with **Node.js, Playwright Stealth, and Google Gemini AI**, it features an
 | **Instahyre** | `instahyre.com` | Opportunities Feed + 1-Click Apply + Questionnaire/Note Modals | `.instahyre-chrome-profile/` |
 | **Foundit** | `foundit.in` | Pre-filtered SRP Search + Quick Apply + Screening Questionnaires | `.foundit-chrome-profile/` |
 | **Naukri** | `naukri.com` | Pre-filtered Search Tuples + Direct 1-Click Apply + Chatbot Modals | `.naukri-chrome-profile/` |
+| **Cutshort** | `cutshort.io` | Discover Feed + 1-Click Apply + Startup Pitch Notes & Salary Modals | `.cutshort-chrome-profile/` |
+| **Hirist** | `hirist.tech` | Tech-exclusive Feeds + 1-Click Quick Apply + Screening Popups | `.hirist-chrome-profile/` |
+| **YC Work at a Startup** | `workatastartup.com` | YC Startup Feed + Direct Founder Pitch Generator | `.yc-chrome-profile/` |
+| **Indeed India** | `in.indeed.com` | "Easily Apply" Multi-step Form & Review Automation | `.indeed-chrome-profile/` |
+| **LinkedIn** | `linkedin.com` | "Easy Apply" Multi-step Dialogs with Stealth Throttling | `.linkedin-chrome-profile/` |
 
 ```text
 [Job / Candidate Opportunity Found]
@@ -67,10 +72,12 @@ Built with **Node.js, Playwright Stealth, and Google Gemini AI**, it features an
 Search URLs automatically include experience bounds to pre-filter job portal feeds before browser page load:
 - **Naukri Feeds:** `?experience=0&experience=1&experience=2&experience=3`
 - **Foundit Feeds:** `&experienceRanges=0~3`
+- **Hirist Feeds:** `?exp=0-3`
+- **LinkedIn Feeds:** `&f_AL=true&f_E=2,3`
 
 ### 5. Location Hierarchy
 - **Priority 1:** Bengaluru, Pune, Hyderabad *(Remote, Hybrid, On-site)*
-- **Priority 2:** Remote (India), Mumbai, Chennai, Gurgaon / Gurugram, Noida / Delhi NCR *(Remote, Hybrid, On-site)*
+- **Priority 2:** Remote (India/Global), Mumbai, Chennai, Gurgaon / Gurugram, Noida / Delhi NCR *(Remote, Hybrid, On-site)*
 - **Priority 3:** Ahmedabad *(Remote, Hybrid, On-site)*
 - **Other Cities:** **MUST be Remote only** (e.g. Jaipur On-site is automatically skipped).
 
@@ -84,39 +91,23 @@ npm install
 ```
 
 ### 2. Configure Your Profile in `.env`
-Fill in your details in `.env` once. All platforms (Wellfound, Instahyre, Foundit, and Naukri) share the exact same configuration!
+Fill in your details in `.env` once. All 9 platforms share the exact same configuration!
 
 ---
 
 ### 3. Platform Commands
 
-#### 🔵 Wellfound
-```powershell
-npm run login:wellfound      # Step 1: One-time login
-npm run dry-run:wellfound    # Step 2: Safe dry run
-npm run apply:wellfound      # Step 3: Apply live for real
-```
-
-#### 🟢 Instahyre
-```powershell
-npm run login:instahyre      # Step 1: One-time login
-npm run dry-run:instahyre    # Step 2: Safe dry run
-npm run apply:instahyre      # Step 3: Apply live for real
-```
-
-#### 🔴 Foundit (formerly Monster)
-```powershell
-npm run login:foundit        # Step 1: One-time login
-npm run dry-run:foundit      # Step 2: Safe dry run
-npm run apply:foundit        # Step 3: Apply live for real
-```
-
-#### 🔷 Naukri.com
-```powershell
-npm run login:naukri         # Step 1: One-time login
-npm run dry-run:naukri       # Step 2: Safe dry run
-npm run apply:naukri         # Step 3: Apply live for real
-```
+| Platform | Step 1: One-Time Login | Step 2: Safe Dry Run | Step 3: Apply Live |
+|---|---|---|---|
+| **Wellfound** | `npm run login:wellfound` | `npm run dry-run:wellfound` | `npm run apply:wellfound` |
+| **Instahyre** | `npm run login:instahyre` | `npm run dry-run:instahyre` | `npm run apply:instahyre` |
+| **Foundit** | `npm run login:foundit` | `npm run dry-run:foundit` | `npm run apply:foundit` |
+| **Naukri** | `npm run login:naukri` | `npm run dry-run:naukri` | `npm run apply:naukri` |
+| **Cutshort** | `npm run login:cutshort` | `npm run dry-run:cutshort` | `npm run apply:cutshort` |
+| **Hirist** | `npm run login:hirist` | `npm run dry-run:hirist` | `npm run apply:hirist` |
+| **YC Startups** | `npm run login:yc` | `npm run dry-run:yc` | `npm run apply:yc` |
+| **Indeed India** | `npm run login:indeed` | `npm run dry-run:indeed` | `npm run apply:indeed` |
+| **LinkedIn** | `npm run login:linkedin` | `npm run dry-run:linkedin` | `npm run apply:linkedin` |
 
 ---
 
@@ -131,46 +122,22 @@ npm run stats
 
 ## 🧪 Testing & Verification
 
-Run the built-in diagnostic test suites anytime:
+Run the built-in diagnostic test suites across all 9 platforms anytime:
 ```powershell
-# Run all 4 test suites together (30 unit tests):
+# Run all 9 test suites together (45+ unit tests):
 npm test
 
 # Or individually:
-node test-decision-pipeline.js   # Wellfound (7 tests)
-node test-instahyre-pipeline.js  # Instahyre (7 tests)
-node test-foundit-pipeline.js    # Foundit (8 tests)
-node test-naukri-pipeline.js     # Naukri (8 tests)
+node test-decision-pipeline.js   # Wellfound
+node test-instahyre-pipeline.js  # Instahyre
+node test-foundit-pipeline.js    # Foundit
+node test-naukri-pipeline.js     # Naukri
+node test-cutshort-pipeline.js   # Cutshort
+node test-hirist-pipeline.js     # Hirist
+node test-yc-pipeline.js         # YC Work at a Startup
+node test-indeed-pipeline.js     # Indeed India
+node test-linkedin-pipeline.js   # LinkedIn Easy Apply
 ```
-
----
-
-## ⚙️ Customizing for Senior Developers (4+ Years Exp)
-
-If you are a **Senior Engineer, Tech Lead, Staff/Principal Engineer, or Architect (4+ years)**:
-1. **Remove Senior Titles from Hard Exclusions:**
-   In all `*-auto-apply.js` files, remove `/\bsenior\b/`, `/\blead\b/`, `/\bprincipal\b/`, and `/\bstaff\b/` from `TITLE_HARD_EXCLUSIONS`.
-2. **Add Senior Roles to Target List:**
-   Add `/\bsenior\s+frontend\b/`, `/\blead\s+engineer\b/` to `TARGET_ROLE_PATTERNS`.
-3. **Invert Experience Filtering:**
-   In `checkExperienceExclusion()`, remove the 4+ yr rejection (and optionally skip junior 0-1 yr roles).
-4. **Update Profile in `.env`:**
-   Set `CURRENT_ROLE=Senior Frontend Engineer at TechCorp`, `YEARS_EXPERIENCE=5+ years...`.
-
----
-
-## 📁 Key Project Files
-
-| File | Description |
-|---|---|
-| [`naukri-auto-apply.js`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/naukri-auto-apply.js) | Core Naukri engine: Two-layer pipeline, 1-click & Chatbot automation, and Gemini AI. |
-| [`foundit-auto-apply.js`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/foundit-auto-apply.js) | Core Foundit engine: Two-layer pipeline, Quick Apply & modal automation, and Gemini AI. |
-| [`instahyre-auto-apply.js`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/instahyre-auto-apply.js) | Core Instahyre engine: Two-layer pipeline, 1-click & modal automation, and Gemini AI. |
-| [`wellfound-auto-apply.js`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/wellfound-auto-apply.js) | Core Wellfound engine: Two-layer pipeline, JD scraping, and cover letter generator. |
-| [`auto-apply-runner.js`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/auto-apply-runner.js) | Playwright Stealth supervisor managing multi-platform sessions, search rotations, and tracking. |
-| [`stats.js`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/stats.js) | CLI Analytics dashboard for viewing live application metrics and recent submissions. |
-| [`applications.csv`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/applications.csv) | Unified application history log across all platforms with Match Scores (git-ignored). |
-| [`.env`](file:///d:/MY-PROJECTS/AutoApply_WorkFlow/.env) | Shared CV context, credentials, and Gemini API key (git-ignored). |
 
 ---
 

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Multi-Platform Auto-Apply Runner â€” Playwright Stealth Automation Suite
  * Supports: Wellfound (wellfound.com), Instahyre (instahyre.com), Foundit (foundit.in), Naukri (naukri.com)
  *
@@ -59,7 +59,7 @@ const SITES = {
     searches: ["https://wellfound.com/jobs"],
     loginUrl: "https://wellfound.com/login",
     injectOn: (url) => /wellfound\.com/.test(url),
-    submittedRe: /application sent|DRY_RUN â€” would click/i,
+    submittedRe: /application sent|DRY_RUN — would click/i,
     dailyCap: 50,
   },
   instahyre: {
@@ -70,7 +70,7 @@ const SITES = {
     loginUrl: "https://www.instahyre.com/login",
     injectOn: (url) => /instahyre\.com\/candidate\/opportunities/.test(url),
     submittedRe:
-      /application submitted|1-Click Apply submitted|DRY_RUN â€” would click/i,
+      /application submitted|1-Click Apply submitted|DRY_RUN — would click/i,
     dailyCap: 30,
   },
   foundit: {
@@ -90,7 +90,7 @@ const SITES = {
       "https://www.foundit.in/rio/login?return_url=%2Fseeker%2Fprofile%3Fviewport%3Ddesktop",
     injectOn: (url) => /foundit\.in\/(?:srp|job)/.test(url),
     submittedRe:
-      /application submitted|Quick Apply submitted|DRY_RUN â€” would click/i,
+      /application submitted|Quick Apply submitted|DRY_RUN — would click/i,
     dailyCap: 30,
   },
   naukri: {
@@ -110,15 +110,97 @@ const SITES = {
     loginUrl: "https://www.naukri.com/nlogin/login",
     injectOn: (url) => /naukri\.com/.test(url),
     submittedRe:
-      /application submitted|Direct 1-Click Apply submitted|DRY_RUN â€” would click/i,
+      /application submitted|Direct 1-Click Apply submitted|DRY_RUN — would click/i,
     dailyCap: 30,
+  },
+  cutshort: {
+    name: "Cutshort",
+    script: "cutshort-auto-apply.js",
+    profile: ".cutshort-chrome-profile",
+    searches: [
+      "https://cutshort.io/jobs/react-jobs",
+      "https://cutshort.io/jobs/frontend-developer-jobs",
+      "https://cutshort.io/jobs/full-stack-developer-jobs",
+      "https://cutshort.io/jobs/javascript-jobs",
+      "https://cutshort.io/jobs/nextjs-jobs",
+      "https://cutshort.io/candidate/discover",
+    ],
+    loginUrl: "https://cutshort.io/login",
+    injectOn: (url) => /cutshort\.io/.test(url),
+    submittedRe:
+      /Cutshort Application submitted|application submitted|DRY_RUN — would click/i,
+    dailyCap: 30,
+  },
+  hirist: {
+    name: "Hirist",
+    script: "hirist-auto-apply.js",
+    profile: ".hirist-chrome-profile",
+    searches: [
+      "https://www.hirist.tech/c/react-js-jobs.html?exp=0-3",
+      "https://www.hirist.tech/c/frontend-development-jobs.html?exp=0-3",
+      "https://www.hirist.tech/c/full-stack-development-jobs.html?exp=0-3",
+      "https://www.hirist.tech/c/javascript-jobs.html?exp=0-3",
+      "https://www.hirist.tech/c/node-js-jobs.html?exp=0-3",
+    ],
+    loginUrl: "https://www.hirist.tech/login",
+    injectOn: (url) => /hirist\.tech/.test(url),
+    submittedRe:
+      /Hirist Application submitted|application submitted|DRY_RUN — would click/i,
+    dailyCap: 30,
+  },
+  yc: {
+    name: "YC Work at a Startup",
+    script: "yc-auto-apply.js",
+    profile: ".yc-chrome-profile",
+    searches: [
+      "https://www.workatastartup.com/jobs?roles=frontend,fullstack&role=Frontend%20Engineer&role=Full%20Stack%20Engineer",
+    ],
+    loginUrl: "https://www.workatastartup.com/login",
+    injectOn: (url) => /workatastartup\.com/.test(url),
+    submittedRe:
+      /YC Application submitted|application sent|DRY_RUN — would click/i,
+    dailyCap: 25,
+  },
+  indeed: {
+    name: "Indeed",
+    script: "indeed-auto-apply.js",
+    profile: ".indeed-chrome-profile",
+    searches: [
+      "https://in.indeed.com/jobs?q=react+developer&l=India&sc=0kf%3Aattr%28DS3S6%29%3B",
+      "https://in.indeed.com/jobs?q=frontend+developer&l=India&sc=0kf%3Aattr%28DS3S6%29%3B",
+      "https://in.indeed.com/jobs?q=full+stack+developer&l=India&sc=0kf%3Aattr%28DS3S6%29%3B",
+      "https://in.indeed.com/jobs?q=next.js+developer&l=India&sc=0kf%3Aattr%28DS3S6%29%3B",
+      "https://in.indeed.com/jobs?q=javascript+developer&l=India&sc=0kf%3Aattr%28DS3S6%29%3B",
+    ],
+    loginUrl: "https://secure.indeed.com/auth",
+    injectOn: (url) => /indeed\.com/.test(url),
+    submittedRe:
+      /Indeed Application submitted|application submitted|DRY_RUN — would click/i,
+    dailyCap: 25,
+  },
+  linkedin: {
+    name: "LinkedIn",
+    script: "linkedin-auto-apply.js",
+    profile: ".linkedin-chrome-profile",
+    searches: [
+      "https://www.linkedin.com/jobs/search/?keywords=react%20developer&location=India&f_AL=true&f_E=2%2C3",
+      "https://www.linkedin.com/jobs/search/?keywords=frontend%20developer&location=India&f_AL=true&f_E=2%2C3",
+      "https://www.linkedin.com/jobs/search/?keywords=full%20stack%20developer&location=India&f_AL=true&f_E=2%2C3",
+      "https://www.linkedin.com/jobs/search/?keywords=next.js%20developer&location=India&f_AL=true&f_E=2%2C3",
+      "https://www.linkedin.com/jobs/search/?keywords=javascript%20developer&location=India&f_AL=true&f_E=2%2C3",
+    ],
+    loginUrl: "https://www.linkedin.com/login",
+    injectOn: (url) => /linkedin\.com\/jobs/.test(url),
+    submittedRe:
+      /LinkedIn Easy Apply submitted|application submitted|DRY_RUN — would click/i,
+    dailyCap: 20,
   },
 };
 
 const site = SITES[SITE_ARG];
 if (!site) {
   console.log(
-    "Usage: node auto-apply-runner.js <wellfound|instahyre|foundit|naukri> [login|--live]",
+    "Usage: node auto-apply-runner.js <wellfound|instahyre|foundit|naukri|cutshort|hirist|yc|indeed|linkedin> [login|--live]",
   );
   process.exit(1);
 }
@@ -159,6 +241,32 @@ function loadAppliedDatabase() {
   return db;
 }
 
+function getJobLink(jobId, explicitLink) {
+  if (explicitLink) return explicitLink;
+  switch (SITE_ARG) {
+    case "wellfound":
+      return `https://wellfound.com/jobs/${jobId}`;
+    case "instahyre":
+      return `https://www.instahyre.com/candidate/opportunities/${jobId}`;
+    case "foundit":
+      return `https://www.foundit.in/job/${jobId}`;
+    case "naukri":
+      return `https://www.naukri.com/job-listings-${jobId}`;
+    case "cutshort":
+      return `https://cutshort.io/job/${jobId}`;
+    case "hirist":
+      return `https://www.hirist.tech/j/${jobId}.html`;
+    case "yc":
+      return `https://www.workatastartup.com/jobs/${jobId}`;
+    case "indeed":
+      return `https://in.indeed.com/viewjob?jk=${jobId}`;
+    case "linkedin":
+      return `https://www.linkedin.com/jobs/view/${jobId}/`;
+    default:
+      return "";
+  }
+}
+
 const appliedDb = loadAppliedDatabase();
 function recordAppliedJob(jobId, jobData) {
   if (!jobId) return;
@@ -168,15 +276,7 @@ function recordAppliedJob(jobId, jobData) {
     company: jobData.company || "",
     score: jobData.score || "",
     breakdown: jobData.breakdown || "",
-    link:
-      jobData.link ||
-      (SITE_ARG === "wellfound"
-        ? `https://wellfound.com/jobs/${jobId}`
-        : SITE_ARG === "instahyre"
-          ? `https://www.instahyre.com/candidate/opportunities/${jobId}`
-          : SITE_ARG === "foundit"
-            ? `https://www.foundit.in/job/${jobId}`
-            : `https://www.naukri.com/job-listings-${jobId}`),
+    link: getJobLink(jobId, jobData.link),
   };
   try {
     fs.writeFileSync(APPLIED_DB_FILE, JSON.stringify(appliedDb, null, 2));
@@ -273,14 +373,7 @@ function logApplication(job) {
       job.skills ||
         matchSkills(job.title + " " + (job.jd || job.description || "")),
       job.score ? `${job.score}/100` : "",
-      job.link ||
-        (SITE_ARG === "wellfound"
-          ? `https://wellfound.com/jobs/${job.id}`
-          : SITE_ARG === "instahyre"
-            ? `https://www.instahyre.com/candidate/opportunities/${job.id}`
-            : SITE_ARG === "foundit"
-              ? `https://www.foundit.in/job/${job.id}`
-              : `https://www.naukri.com/job-listings-${job.id}`),
+      getJobLink(job.id, job.link),
       (job.jd || job.description || "").slice(0, 1200),
     ]),
   );
@@ -318,7 +411,7 @@ function buildInjection() {
     log(`Opening Native Chrome for ${site.name} login...`);
     log(`Profile Directory: ${profilePath}`);
     log(
-      `ðŸ‘‰ Log in with Google or Mobile/Email + OTP / Password. When finished, CLOSE the browser window.`,
+      `👉 Log in with Google or Mobile/Email + OTP / Password. When finished, CLOSE the browser window.`,
     );
 
     const chromeProcess = spawn(
@@ -338,7 +431,7 @@ function buildInjection() {
       chromeProcess.on("close", resolve);
     });
 
-    log(`âœ… Login window closed. Session saved to ${site.profile}!`);
+    log(`✅ Login window closed. Session saved to ${site.profile}!`);
     log(
       `Now test your automated applications with: npm run dry-run:${SITE_ARG}`,
     );
@@ -347,7 +440,7 @@ function buildInjection() {
 
   if (TARGET <= 0) {
     log(
-      `Daily cap of ${DAILY_CAP} applications reached (${dayState.count} today) â€” exiting.`,
+      `Daily cap of ${DAILY_CAP} applications reached (${dayState.count} today) — exiting.`,
     );
     return;
   }
@@ -387,12 +480,12 @@ function buildInjection() {
   function wire(page) {
     page.on("console", (msg) => {
       const text = msg.text();
-      if (!/auto-apply|instahyre-apply|foundit-apply|naukri-apply/.test(text))
+      if (!/(?:auto-apply|instahyre-apply|foundit-apply|naukri-apply|cutshort-apply|hirist-apply|yc-apply|indeed-apply|linkedin-apply)/.test(text))
         return;
       lastActivity = Date.now();
       const clean = text
         .replace(
-          /%c\[(?:auto-apply|instahyre-apply|foundit-apply|naukri-apply)\]\s*\S*/,
+          /%c\[(?:auto-apply|instahyre-apply|foundit-apply|naukri-apply|cutshort-apply|hirist-apply|yc-apply|indeed-apply|linkedin-apply)\]\s*\S*/,
           "",
         )
         .trim();
