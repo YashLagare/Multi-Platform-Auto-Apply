@@ -25,7 +25,7 @@
  */
 const path = require("path");
 const fs = require("fs");
-const { CV, geminiKey } = require("./config");
+const { CV, openrouterKey, geminiKey, aiKey } = require("./config");
 
 let chromium;
 try {
@@ -389,7 +389,7 @@ function buildInjection() {
 
   return `(async () => {
     if (window.__aaBusy) return; window.__aaBusy = true;
-    window.__APPLY_CONFIG = ${JSON.stringify({ CV, geminiKey, appliedJobIds: appliedDb.appliedIds })};
+    window.__APPLY_CONFIG = ${JSON.stringify({ CV, openrouterKey, geminiKey, aiKey, appliedJobIds: appliedDb.appliedIds })};
     try { await ${raw}
     } finally { window.__aaBusy = false; }
   })()`;

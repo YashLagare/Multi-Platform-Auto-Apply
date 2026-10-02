@@ -109,6 +109,13 @@ Fill in your details in `.env` once. All 9 platforms share the exact same config
 | **Indeed India** | `npm run login:indeed` | `npm run dry-run:indeed` | `npm run apply:indeed` |
 | **LinkedIn** | `npm run login:linkedin` | `npm run dry-run:linkedin` | `npm run apply:linkedin` |
 
+## 🩺 System Health Check
+
+Run the diagnostic doctor to verify `.env` parameters, Gemini AI connectivity, Chrome session profiles, and tracking integrity in 2 seconds:
+```powershell
+npm run check
+```
+
 ---
 
 ## 📊 Analytics & Reporting

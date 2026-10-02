@@ -19,6 +19,7 @@
     MAX_DELAY_MS: 90000,
     SCORE_THRESHOLD: 65,
     HIGH_SCORE_THRESHOLD: 75,
+    openrouterKey: __CFG.openrouterKey || "",
     geminiKey: __CFG.geminiKey || "",
   };
 
@@ -456,23 +457,41 @@
     for (const [pattern, answer] of QA_BANK) {
       if (pattern.test(label)) return answer;
     }
+    const prompt = `You are answering a job screening question on Foundit on my behalf. Answer in first person, 1-3 sentences, professional, no markdown.\n\nMy CV:\n${JSON.stringify(CV)}\n\nQuestion: ${label}`;
+
+    // 1. OpenRouter
+    if (CONFIG.openrouterKey) {
+      try {
+        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${CONFIG.openrouterKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/YashLagare/Wellfound-Auto-Apply",
+            "X-Title": "AutoApply-Suite",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            max_tokens: 300,
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
+        const data = await res.json();
+        const text = data?.choices?.[0]?.message?.content?.trim();
+        if (text) return text;
+      } catch (e) {}
+    }
+
+    // 2. Direct Gemini
     if (CONFIG.geminiKey) {
       try {
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${CONFIG.geminiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${CONFIG.geminiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: `You are answering a job screening question on Foundit on my behalf. Answer in first person, 1-3 sentences, professional, no markdown.\n\nMy CV:\n${JSON.stringify(CV)}\n\nQuestion: ${label}`,
-                    },
-                  ],
-                },
-              ],
+              contents: [{ parts: [{ text: prompt }] }],
             }),
           },
         );
@@ -480,7 +499,7 @@
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         if (text) return text;
       } catch (e) {
-        log("Gemini call failed:", e.message);
+        log("AI call failed:", e.message);
       }
     }
     return GENERIC_ANSWER;

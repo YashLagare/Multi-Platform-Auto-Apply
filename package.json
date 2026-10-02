@@ -34,6 +34,7 @@
     "dry-run:linkedin": "node auto-apply-runner.js linkedin",
     "apply:linkedin": "node auto-apply-runner.js linkedin --live",
     "stats": "node stats.js",
+    "check": "node doctor.js",
     "test": "node test-decision-pipeline.js && node test-instahyre-pipeline.js && node test-foundit-pipeline.js && node test-naukri-pipeline.js && node test-cutshort-pipeline.js && node test-hirist-pipeline.js && node test-yc-pipeline.js && node test-indeed-pipeline.js && node test-linkedin-pipeline.js"
   },
   "keywords": [

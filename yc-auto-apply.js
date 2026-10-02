@@ -19,6 +19,7 @@
     MAX_DELAY_MS: 85000,
     SCORE_THRESHOLD: 65,
     HIGH_SCORE_THRESHOLD: 75,
+    openrouterKey: __CFG.openrouterKey || "",
     geminiKey: __CFG.geminiKey || "",
   };
 
@@ -404,29 +405,46 @@
     };
   }
 
-  // ======================= PITCH GENERATION =======================
   async function generateYCPitch(job) {
+    const prompt =
+      `You are writing a personalized pitch note to a Y Combinator startup founder/engineering lead on my behalf.\n` +
+      `Candidate Info:\n${JSON.stringify(CV)}\n\n` +
+      `Job Info:\nRole: ${job.title}\nCompany: ${job.company}\nDescription/Skills: ${job.skills || job.description || ""}\n\n` +
+      `Rules:\n1. 2-3 sentences max. Direct, energetic, startup-minded.\n2. State why I am a great fit for building their React/TypeScript frontend/fullstack product.\n3. Mention eagerness to move fast and deliver value.\n4. No placeholders, no bullet points.`;
+
+    // 1. OpenRouter
+    if (CONFIG.openrouterKey) {
+      try {
+        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${CONFIG.openrouterKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/YashLagare/Wellfound-Auto-Apply",
+            "X-Title": "AutoApply-Suite",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            max_tokens: 300,
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
+        const data = await res.json();
+        const text = data?.choices?.[0]?.message?.content?.trim();
+        if (text) return text;
+      } catch (e) {}
+    }
+
+    // 2. Direct Gemini
     if (CONFIG.geminiKey) {
       try {
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${CONFIG.geminiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${CONFIG.geminiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text:
-                        `You are writing a personalized pitch note to a Y Combinator startup founder/engineering lead on my behalf.\n` +
-                        `Candidate Info:\n${JSON.stringify(CV)}\n\n` +
-                        `Job Info:\nRole: ${job.title}\nCompany: ${job.company}\nDescription/Skills: ${job.skills || job.description || ""}\n\n` +
-                        `Rules:\n1. 2-3 sentences max. Direct, energetic, startup-minded.\n2. State why I am a great fit for building their React/TypeScript frontend/fullstack product.\n3. Mention eagerness to move fast and deliver value.\n4. No placeholders, no bullet points.`,
-                    },
-                  ],
-                },
-              ],
+              contents: [{ parts: [{ text: prompt }] }],
             }),
           },
         );
@@ -434,7 +452,7 @@
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         if (text) return text;
       } catch (e) {
-        log("Gemini YC pitch failed:", e.message);
+        log("AI YC pitch failed:", e.message);
       }
     }
     return DEFAULT_YC_PITCH;

@@ -90,6 +90,8 @@ const CV = {
     : `I can start within ${g("NOTICE_PERIOD")}.`,
 };
 
+const openrouterKey = g("OPENROUTER_KEY");
 const geminiKey = g("GEMINI_KEY");
 
-module.exports = { CV, geminiKey };
+module.exports = { CV, openrouterKey, geminiKey, aiKey: openrouterKey || geminiKey };
+
