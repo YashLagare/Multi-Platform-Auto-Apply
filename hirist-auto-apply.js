@@ -586,7 +586,7 @@
       if (processedJobIds.has(card.id)) continue;
       processedJobIds.add(card.id);
 
-      log(`\n▶ Evaluating: ${card.title} @ ${card.company} | ID: ${card.id}`);
+      log(`Evaluating: ${card.title} @ ${card.company} | ID: ${card.id}`);
 
       // Layer 1: Absolute Hard Filters
       if (isJobAlreadyApplied(card.id)) {

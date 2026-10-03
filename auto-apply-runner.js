@@ -493,7 +493,7 @@ function buildInjection() {
       log("  " + clean.slice(0, 160));
 
       // Capture job evaluation info
-      const mEval = clean.match(/â–¶ Evaluating: (.+)/);
+      const mEval = clean.match(/(?:[^\w\s])?\s*Evaluating(?:\s+Single\s+Job\s+Page)?:?\s*(.+)/i) || clean.match(/Evaluating:\s*(.+)/i);
       if (mEval) {
         const parts = mEval[1].split(" | ");
         const atParts = parts[0].split(" @ ");
@@ -541,7 +541,7 @@ function buildInjection() {
         if (LIVE) {
           bumpDayCount();
           try {
-            logApplication(pendingJob || { title: "Unknown" });
+            if (pendingJob && pendingJob.title && pendingJob.title !== "Unknown") { logApplication(pendingJob); } else { log("⚠️ Skipping corrupt CSV entry — pendingJob missing"); }
           } catch (e) {
             log("CSV write error: " + e.message);
           }

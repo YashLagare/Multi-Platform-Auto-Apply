@@ -813,7 +813,7 @@
     }
 
     const matchResult = calculateMatchScore(job);
-    log(`▶ Evaluating: ${title} @ ${company || "Company"} | ID: ${jobId}`);
+    log(`Evaluating: ${title} @ ${company || "Company"} | ID: ${jobId}`);
     log(
       `  📊 Score: ${matchResult.score}/100 [${matchResult.action}] | Breakdown: ${matchResult.breakdown}`,
     );
