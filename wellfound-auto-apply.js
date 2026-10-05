@@ -17,7 +17,7 @@
     MAX_APPLICATIONS: 50,
     MIN_DELAY_MS: 60000,
     MAX_DELAY_MS: 150000,
-    SCORE_THRESHOLD: 65, // Minimum score to proceed with application
+    SCORE_THRESHOLD: 55, // Minimum score to proceed with application
     HIGH_SCORE_THRESHOLD: 75,
     openrouterKey: __CFG.openrouterKey || "",
     geminiKey: __CFG.geminiKey || "",

@@ -143,7 +143,7 @@ const SITES = {
       "https://www.hirist.tech/c/node-js-jobs.html?exp=0-3",
     ],
     loginUrl: "https://www.hirist.tech/login",
-    injectOn: (url) => /hirist\.tech/.test(url),
+    injectOn: (url) => /hirist\.(?:tech|com)/.test(url),
     submittedRe:
       /Hirist Application submitted|application submitted|DRY_RUN — would click/i,
     dailyCap: 30,
@@ -572,7 +572,7 @@ function buildInjection() {
       `Navigating to search URL (${searchIdx + 1}/${site.searches.length}): ${searchUrl}`,
     );
     await mainPage
-      .goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 60000 })
+      .goto(searchUrl, { waitUntil: "commit", timeout: 15000 }).then(() => mainPage.waitForLoadState("domcontentloaded", { timeout: 8000 }).catch(() => {}))
       .catch(() => {});
     await mainPage.waitForTimeout(8000);
     await mainPage.evaluate(injection).catch(() => {});
