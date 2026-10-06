@@ -201,6 +201,9 @@ function evaluateHiristJob(job, appliedHistory = {}) {
   ) {
     score += 20;
     breakdown.push("Exp: 0-3 yrs (+20)");
+  } else if (!job.experience || /any/i.test(job.experience)) {
+    score += 15;
+    breakdown.push("Exp: Unspecified (+15)");
   } else {
     score += 10;
     breakdown.push("Exp: 2-3 yrs (+10)");
@@ -277,5 +280,26 @@ const evaluated = evaluateHiristJob({
 assert.strictEqual(evaluated.pass, true);
 assert.ok(evaluated.score >= 80, `Expected score >= 80, got ${evaluated.score}`);
 console.log(`  ✓ Hirist High Match Test passed (Score: ${evaluated.score})`);
+
+const belowThreshold = evaluateHiristJob({
+  id: "hirist-203",
+  title: "Frontend Engineer",
+  experience: "",
+  location: "Pune",
+  skills: "",
+  description: "",
+});
+assert.strictEqual(belowThreshold.score, 60);
+assert.strictEqual(
+  belowThreshold.pass,
+  false,
+  "Runtime scoring threshold should reject scores below 65",
+);
+assert.strictEqual(
+  belowThreshold.reason,
+  "LOW_MATCH_SCORE (60 < 65)",
+  "Low score should report the same threshold used by the runtime",
+);
+console.log("  ✓ Hirist scoring threshold test passed");
 
 console.log("\n✅ All Hirist pipeline tests passed successfully!");

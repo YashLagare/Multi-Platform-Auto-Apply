@@ -72,7 +72,7 @@ Built with **Node.js, Playwright Stealth, and Google Gemini AI**, it features an
 Search URLs automatically include experience bounds to pre-filter job portal feeds before browser page load:
 - **Naukri Feeds:** `?experience=0&experience=1&experience=2&experience=3`
 - **Foundit Feeds:** `&experienceRanges=0~3`
-- **Hirist Feeds:** `?exp=0-3`
+- **Hirist Feeds:** category search pages (canonical URLs; legacy `.html?exp=0-3` URLs redirect and drop the experience query)
 - **LinkedIn Feeds:** `&f_AL=true&f_E=2,3`
 
 ### 5. Location Hierarchy
@@ -108,6 +108,10 @@ Fill in your details in `.env` once. All 9 platforms share the exact same config
 | **YC Startups** | `npm run login:yc` | `npm run dry-run:yc` | `npm run apply:yc` |
 | **Indeed India** | `npm run login:indeed` | `npm run dry-run:indeed` | `npm run apply:indeed` |
 | **LinkedIn** | `npm run login:linkedin` | `npm run dry-run:linkedin` | `npm run apply:linkedin` |
+
+### Hirist troubleshooting
+
+Hirist runs report the final page URL, HTTP response, page title, detected job-link count, and login/verification/no-results indicators before scraping. If a run appears to stop after “Navigating to search URL,” check these diagnostics and the browser-script errors that follow. A live application is only recorded after the page shows an application confirmation; dry runs do not submit or mark jobs as applied.
 
 ## 🩺 System Health Check
 

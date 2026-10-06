@@ -17,7 +17,7 @@
     MAX_APPLICATIONS: 30,
     MIN_DELAY_MS: 35000,
     MAX_DELAY_MS: 75000,
-    SCORE_THRESHOLD: 55,
+    SCORE_THRESHOLD: 65,
     HIGH_SCORE_THRESHOLD: 75,
     geminiKey: __CFG.geminiKey || "",
   };
@@ -224,6 +224,27 @@
       await sleep(pollMs);
     }
     return null;
+  }
+
+  function hasApplicationConfirmation(button) {
+    const confirmationText =
+      /application\s+(?:has been\s+)?(?:submitted|sent)|successfully\s+applied|you have applied|already applied/i;
+    const pageConfirmation = confirmationText.test(
+      document.body?.innerText || "",
+    );
+    const confirmation = [
+      ...document.querySelectorAll(
+        '[role="alert"], [class*="toast"], [class*="success"], .alert-success',
+      ),
+    ].some((el) => visible(el) && confirmationText.test(el.textContent || ""));
+    const buttonText = (button?.textContent || "").trim();
+    return (
+      pageConfirmation ||
+      confirmation ||
+      /^(?:applied|application sent|already applied|applied successfully)$/i.test(
+        buttonText,
+      )
+    );
   }
 
   // ======================= LAYER 1: HARD FILTER FUNCTIONS =======================
@@ -433,7 +454,7 @@
   }
 
   // ======================= MODAL & SCREENING =======================
-  async function handleHiristModal(job) {
+  async function handleHiristModal(job, applyButton) {
     const modal = await waitFor(
       () =>
         document.querySelector(
@@ -442,7 +463,15 @@
       4000,
     );
     if (!modal) {
-      log("  ✅ Direct 1-Click Apply submitted (no extra modal)");
+      const confirmed = await waitFor(
+        () => hasApplicationConfirmation(applyButton),
+        8000,
+      );
+      if (!confirmed) {
+        log("  ⚠ No application confirmation detected after clicking Apply");
+        return false;
+      }
+      log("  ✅ Direct 1-Click Apply submitted (confirmed)");
       return true;
     }
 
@@ -496,13 +525,21 @@
     }
 
     submitBtn.click();
-    log("  ✅ Application submitted in modal");
+    const confirmed = await waitFor(() => hasApplicationConfirmation(), 8000);
+    if (!confirmed) {
+      log("  ⚠ Modal closed or submitted without a visible confirmation");
+      return false;
+    }
+    log("  ✅ Application submitted in modal (confirmed)");
     return true;
   }
 
   // ======================= SCRAPE HIRIST CARDS =======================
   function findHiristCards() {
     const cards = [];
+    let missingIdCount = 0;
+    let missingTitleCount = 0;
+    let duplicateCount = 0;
     const selectors = [
       ".job-box",
       ".jobCard",
@@ -513,23 +550,74 @@
       '[data-job-id]',
     ];
 
-    const cardElements = document.querySelectorAll(selectors.join(", "));
+    const cardSelector = selectors.join(", ");
+    const cardElements = new Set(document.querySelectorAll(cardSelector));
+    const jobLinks = document.querySelectorAll(
+      'a[href*="/j/"], a[href*="/job/"], a[href*="jobId="]',
+    );
+
+    for (const link of jobLinks) {
+      let container = link.closest(cardSelector);
+      if (!container) {
+        container = link;
+        for (let depth = 0; depth < 4 && container.parentElement; depth++) {
+          const parent = container.parentElement;
+          if (
+            parent === document.body ||
+            parent.querySelectorAll(
+              'a[href*="/j/"], a[href*="/job/"], a[href*="jobId="]',
+            ).length > 1
+          ) {
+            break;
+          }
+          container = parent;
+          if (
+            container.matches("article, li, [data-job-id], [data-id]") ||
+            container === document.body
+          ) {
+            break;
+          }
+        }
+      }
+      cardElements.add(container);
+    }
+
+    log(
+      `Discovery: ${jobLinks.length} job links and ${cardElements.size} candidate containers`,
+    );
+    const seenIds = new Set();
     for (const el of cardElements) {
       if (!visible(el)) continue;
 
-      const linkEl = el.querySelector(
-        'a[href*="/j/"], a[href*="/job/"], h3 a, h2 a, .job-title a',
-      );
+      const linkEl = el.matches("a")
+        ? el
+        : el.querySelector(
+            'a[href*="/j/"], a[href*="/job/"], a[href*="jobId="], h3 a, h2 a, .job-title a',
+          );
       const href = linkEl?.getAttribute("href") || "";
       const jobId = extractJobId(el, href);
-      if (!jobId || isJobAlreadyApplied(jobId)) continue;
+      if (!jobId) {
+        missingIdCount++;
+        continue;
+      }
+      if (seenIds.has(jobId)) {
+        duplicateCount++;
+        continue;
+      }
+      seenIds.add(jobId);
+      if (isJobAlreadyApplied(jobId)) continue;
 
       const title = (
         linkEl?.textContent ||
+        linkEl?.getAttribute("aria-label") ||
+        linkEl?.getAttribute("title") ||
         el.querySelector(".job-title, h3, h2, [class*='title']")?.textContent ||
         ""
       ).trim();
-      if (!title || title.length < 3) continue;
+      if (!title || title.length < 3) {
+        missingTitleCount++;
+        continue;
+      }
 
       const company = (
         el.querySelector(".company-name, [class*='company'], .org-name")?.textContent || ""
@@ -566,6 +654,9 @@
       });
     }
 
+    log(
+      `Discovery parsed ${cards.length} jobs; skipped ${missingIdCount} without IDs, ${missingTitleCount} without titles, ${duplicateCount} duplicate containers`,
+    );
     return cards;
   }
 
@@ -573,6 +664,12 @@
   log("🚀 Initializing Hirist.tech Two-Layer Decision Pipeline Auto-Apply...");
   log(`Mode: ${CONFIG.DRY_RUN ? "🔍 DRY RUN (Simulation)" : "⚡ LIVE APPLICATION"}`);
   log(`Max applications this run: ${CONFIG.MAX_APPLICATIONS}`);
+  log(
+    `Page state: ${location.href} | ${document.title} | readyState=${document.readyState}`,
+  );
+  if (/login|sign in|captcha|access denied/i.test(document.title)) {
+    log("⚠ Search may be blocked by login, verification, or access control");
+  }
 
   let appliedCount = 0;
   const processedJobIds = new Set();
@@ -647,17 +744,24 @@
         continue;
       }
 
+      if (CONFIG.DRY_RUN) {
+        log(
+          `  🔍 DRY_RUN — would click Apply for ${card.title} @ ${card.company}`,
+        );
+        appliedCount++;
+        continue;
+      }
+
       log(`  ✨ Triggering Application: "${activeBtn.textContent.trim()}"`);
       activeBtn.click();
       await sleep(2000);
 
-      const success = await handleHiristModal(card);
+      const success = await handleHiristModal(card, activeBtn);
       if (success) {
         appliedCount++;
         markJobAsApplied(card.id, card);
         log(
-          `  ✅ Hirist Application submitted (${appliedCount}/${CONFIG.MAX_APPLICATIONS})` +
-            (CONFIG.DRY_RUN ? " [SIMULATED]" : ""),
+          `  ✅ Hirist Application submitted (${appliedCount}/${CONFIG.MAX_APPLICATIONS})`,
         );
         await humanDelay();
       }

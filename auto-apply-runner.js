@@ -136,14 +136,15 @@ const SITES = {
     script: "hirist-auto-apply.js",
     profile: ".hirist-chrome-profile",
     searches: [
-      "https://www.hirist.tech/c/react-js-jobs.html?exp=0-3",
-      "https://www.hirist.tech/c/frontend-development-jobs.html?exp=0-3",
-      "https://www.hirist.tech/c/full-stack-development-jobs.html?exp=0-3",
-      "https://www.hirist.tech/c/javascript-jobs.html?exp=0-3",
-      "https://www.hirist.tech/c/node-js-jobs.html?exp=0-3",
+      "https://www.hirist.tech/c/react-js-jobs",
+      "https://www.hirist.tech/c/frontend-development-jobs",
+      "https://www.hirist.tech/c/full-stack-development-jobs",
+      "https://www.hirist.tech/c/javascript-jobs",
+      "https://www.hirist.tech/c/node-js-jobs",
     ],
     loginUrl: "https://www.hirist.tech/login",
-    injectOn: (url) => /hirist\.(?:tech|com)/.test(url),
+    injectOn: (url) =>
+      /hirist\.(?:tech|com)\/(?:c\/|j\/|job\/)/.test(url),
     submittedRe:
       /Hirist Application submitted|application submitted|DRY_RUN — would click/i,
     dailyCap: 30,
@@ -475,10 +476,50 @@ function buildInjection() {
   let submitted = 0;
   let lastActivity = Date.now();
   let pendingJob = null;
+  const isHirist = SITE_ARG === "hirist";
+  let hiristForbiddenDataRequest = null;
 
   const isBusy = (p) => p.evaluate("!!window.__aaBusy").catch(() => false);
 
+  async function injectPage(page, trigger) {
+    if (!site.injectOn(page.url())) {
+      if (isHirist) {
+        log(`Hirist injection skipped after ${trigger}: URL is outside search/job pages`);
+      }
+      return false;
+    }
+    try {
+      await page.evaluate(injection);
+      return true;
+    } catch (e) {
+      if (isHirist) {
+        log(`Hirist script injection failed after ${trigger}: ${e.message}`);
+      }
+      return false;
+    }
+  }
+
   function wire(page) {
+    if (isHirist) {
+      page.on("pageerror", (error) => {
+        log(`Hirist browser error: ${error.message.split("\n")[0]}`);
+      });
+      page.on("response", (response) => {
+        const request = response.request();
+        const resourceType = request.resourceType();
+        if (
+          response.status() !== 403 ||
+          (resourceType !== "xhr" && resourceType !== "fetch")
+        ) {
+          return;
+        }
+        const endpoint = new URL(response.url());
+        hiristForbiddenDataRequest = `${request.method()} ${endpoint.origin}${endpoint.pathname}`;
+        log(
+          `Hirist job-data request denied: ${hiristForbiddenDataRequest} returned HTTP 403`,
+        );
+      });
+    }
     page.on("console", (msg) => {
       const text = msg.text();
       if (!/(?:auto-apply|instahyre-apply|foundit-apply|naukri-apply|cutshort-apply|hirist-apply|yc-apply|indeed-apply|linkedin-apply)/.test(text))
@@ -535,7 +576,7 @@ function buildInjection() {
         log(
           `==> ${submitted}/${TARGET} this run (${dayState.count + 1}/${DAILY_CAP} today)`,
         );
-        if (pendingJob && pendingJob.id) {
+        if (LIVE && pendingJob && pendingJob.id) {
           recordAppliedJob(pendingJob.id, pendingJob);
         }
         if (LIVE) {
@@ -553,7 +594,7 @@ function buildInjection() {
     page.on("load", async () => {
       if (!site.injectOn(page.url())) return;
       lastActivity = Date.now();
-      await page.evaluate(injection).catch(() => {});
+      await injectPage(page, "page load");
     });
   }
 
@@ -571,11 +612,83 @@ function buildInjection() {
     log(
       `Navigating to search URL (${searchIdx + 1}/${site.searches.length}): ${searchUrl}`,
     );
-    await mainPage
-      .goto(searchUrl, { waitUntil: "commit", timeout: 15000 }).then(() => mainPage.waitForLoadState("domcontentloaded", { timeout: 8000 }).catch(() => {}))
-      .catch(() => {});
+    let response = null;
+    let navigationError = null;
+    for (let attempt = 1; attempt <= (isHirist ? 2 : 1); attempt++) {
+      try {
+        response = await mainPage.goto(searchUrl, {
+          waitUntil: "commit",
+          timeout: isHirist ? 20000 : 15000,
+        });
+        navigationError = null;
+        break;
+      } catch (e) {
+        navigationError = e;
+        log(
+          `${site.name} navigation attempt ${attempt} failed: ${e.message.split("\n")[0]}`,
+        );
+      }
+    }
+    if (navigationError && isHirist) {
+      log(
+        `Skipping this Hirist search URL after retry; browser remains at ${mainPage.url()}`,
+      );
+      continue;
+    }
+    if (response) {
+      await mainPage
+        .waitForLoadState("domcontentloaded", { timeout: 8000 })
+        .catch((e) => {
+          if (isHirist) {
+            log(`Hirist DOMContentLoaded wait ended: ${e.message.split("\n")[0]}`);
+          }
+        });
+    }
     await mainPage.waitForTimeout(8000);
-    await mainPage.evaluate(injection).catch(() => {});
+    let pageState = null;
+    if (isHirist) {
+      pageState = await mainPage
+        .evaluate(() => {
+          const pageText = document.body?.innerText?.slice(0, 5000) || "";
+          return {
+            url: location.href,
+            title: document.title,
+            readyState: document.readyState,
+            jobLinks: document.querySelectorAll(
+              'a[href*="/j/"], a[href*="/job/"], a[href*="jobId="]',
+            ).length,
+            loginPrompt: /log\s*in|sign\s*in/i.test(
+              `${document.title} ${pageText}`,
+            ),
+            verificationPrompt: /captcha|verify you are human|access denied/i.test(
+              `${document.title} ${pageText}`,
+            ),
+            noResults: /no jobs found|no results found|couldn't find any jobs/i.test(
+              pageText,
+            ),
+          };
+        })
+        .catch((e) => {
+          log(`Hirist page diagnostics failed: ${e.message.split("\n")[0]}`);
+          return null;
+        });
+      if (pageState) {
+        const status = response ? response.status() : "no response";
+        log(
+          `Hirist page state: HTTP ${status}, ${pageState.readyState}, title="${pageState.title}", URL=${pageState.url}, job links=${pageState.jobLinks}, login=${pageState.loginPrompt}, verification=${pageState.verificationPrompt}, no-results=${pageState.noResults}`,
+        );
+      }
+    }
+    await injectPage(mainPage, "search navigation");
+    if (isHirist && pageState && pageState.jobLinks === 0) {
+      await mainPage.waitForTimeout(5000);
+      if (hiristForbiddenDataRequest) {
+        log(
+          `Hirist returned no job links and denied its data request (${hiristForbiddenDataRequest}); stopping this run. Open Hirist in the saved Chrome profile and confirm the search feed loads normally before retrying.`,
+        );
+        break;
+      }
+    }
 
     // Allow search page to process
     let searchWait = 0;
@@ -588,8 +701,13 @@ function buildInjection() {
         if (await isBusy(p)) anyBusy = true;
       }
       if (!anyBusy) {
-        await mainPage.evaluate(injection).catch(() => {});
+        await injectPage(mainPage, "search polling");
       }
+    }
+    if (isHirist) {
+      log(
+        `Hirist search URL complete: submitted=${submitted}/${TARGET}, elapsed=${Math.round(searchWait / 1000)}s`,
+      );
     }
   }
 
@@ -601,4 +719,3 @@ function buildInjection() {
   log("FATAL: " + e.message.split("\n")[0]);
   process.exit(1);
 });
-
