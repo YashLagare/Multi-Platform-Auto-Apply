@@ -152,4 +152,4 @@ node test-linkedin-pipeline.js   # LinkedIn Easy Apply
 
 ---
 
-Written By Yash Lagare
+Written By Yash Lagare.
