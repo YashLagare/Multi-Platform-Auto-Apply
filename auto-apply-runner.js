@@ -477,11 +477,14 @@ function buildInjection() {
   let lastActivity = Date.now();
   let pendingJob = null;
   const isHirist = SITE_ARG === "hirist";
-  let hiristForbiddenDataRequest = null;
+  let runnerClosing = false;
+  let hiristForbiddenJobDataRequest = null;
+  let hiristOtherForbiddenRequest = null;
 
   const isBusy = (p) => p.evaluate("!!window.__aaBusy").catch(() => false);
 
   async function injectPage(page, trigger) {
+    if (runnerClosing || page.isClosed()) return false;
     if (!site.injectOn(page.url())) {
       if (isHirist) {
         log(`Hirist injection skipped after ${trigger}: URL is outside search/job pages`);
@@ -489,10 +492,11 @@ function buildInjection() {
       return false;
     }
     try {
+      if (runnerClosing || page.isClosed()) return false;
       await page.evaluate(injection);
       return true;
     } catch (e) {
-      if (isHirist) {
+      if (isHirist && !runnerClosing && !page.isClosed()) {
         log(`Hirist script injection failed after ${trigger}: ${e.message}`);
       }
       return false;
@@ -514,10 +518,20 @@ function buildInjection() {
           return;
         }
         const endpoint = new URL(response.url());
-        hiristForbiddenDataRequest = `${request.method()} ${endpoint.origin}${endpoint.pathname}`;
-        log(
-          `Hirist job-data request denied: ${hiristForbiddenDataRequest} returned HTTP 403`,
-        );
+        const requestLabel = `${request.method()} ${endpoint.origin}${endpoint.pathname}`;
+        const isChatService = endpoint.hostname === "api-chat.hirist.tech";
+        const looksLikeJobData =
+          !isChatService &&
+          /job|search|listing|opportunit|feed/i.test(endpoint.pathname);
+        if (looksLikeJobData) {
+          hiristForbiddenJobDataRequest = requestLabel;
+          log(`Hirist likely job-data request returned HTTP 403: ${requestLabel}`);
+        } else {
+          hiristOtherForbiddenRequest = requestLabel;
+          log(
+            `${isChatService ? "Hirist chat-service" : "Hirist non-job"} request returned HTTP 403: ${requestLabel}`,
+          );
+        }
       });
     }
     page.on("console", (msg) => {
@@ -592,7 +606,7 @@ function buildInjection() {
     });
 
     page.on("load", async () => {
-      if (!site.injectOn(page.url())) return;
+      if (runnerClosing || page.isClosed() || !site.injectOn(page.url())) return;
       lastActivity = Date.now();
       await injectPage(page, "page load");
     });
@@ -682,12 +696,19 @@ function buildInjection() {
     await injectPage(mainPage, "search navigation");
     if (isHirist && pageState && pageState.jobLinks === 0) {
       await mainPage.waitForTimeout(5000);
-      if (hiristForbiddenDataRequest) {
+      if (hiristForbiddenJobDataRequest) {
         log(
-          `Hirist returned no job links and denied its data request (${hiristForbiddenDataRequest}); stopping this run. Open Hirist in the saved Chrome profile and confirm the search feed loads normally before retrying.`,
+          `Hirist returned no job links and a likely job-data endpoint was denied (${hiristForbiddenJobDataRequest}); stopping this run. Check that the search feed loads normally in the saved Chrome profile before retrying.`,
         );
         break;
       }
+      const deniedRequest = hiristOtherForbiddenRequest
+        ? ` A separate request returned 403 (${hiristOtherForbiddenRequest}); it is not identified as a job-feed endpoint.`
+        : "";
+      log(
+        `Hirist search page returned no job links; skipping this category instead of waiting on an empty feed.${deniedRequest}`,
+      );
+      continue;
     }
 
     // Allow search page to process
@@ -714,6 +735,7 @@ function buildInjection() {
   log(
     `Finished: ${submitted}/${TARGET} applications ${LIVE ? "submitted" : "simulated (dry run)"}.`,
   );
+  runnerClosing = true;
   await ctx.close();
 })().catch((e) => {
   log("FATAL: " + e.message.split("\n")[0]);

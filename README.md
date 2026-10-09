@@ -111,7 +111,7 @@ Fill in your details in `.env` once. All 9 platforms share the exact same config
 
 ### Hirist troubleshooting
 
-Hirist runs report the final page URL, HTTP response, page title, detected job-link count, and login/verification/no-results indicators before scraping. If a run appears to stop after “Navigating to search URL,” check these diagnostics and the browser-script errors that follow. A live application is only recorded after the page shows an application confirmation; dry runs do not submit or mark jobs as applied.
+Hirist runs report the final page URL, HTTP response, page title, detected job-link count, and login/verification/no-results indicators before scraping. A 403 from Hirist's chat-service permission endpoint is reported separately from a likely job-feed 403; it does not by itself prove the job feed was denied. Empty search categories are skipped instead of polled for several minutes. If every category has zero job links, verify that the search feed loads in the saved Chrome profile. A live application is only recorded after the page shows an application confirmation; dry runs do not submit or mark jobs as applied.
 
 ## 🩺 System Health Check
 
