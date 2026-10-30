@@ -51,12 +51,106 @@ const SITE_ARG = (process.argv[2] || "wellfound").toLowerCase();
 const LOGIN_MODE = process.argv.includes("login");
 const LIVE = process.argv.includes("--live");
 
+const ROLE_VARIANTS = [
+  "react developer",
+  "react js developer",
+  "frontend engineer",
+  "frontend developer",
+  "full stack developer",
+  "full-stack engineer",
+  "mern stack developer",
+  "software engineer",
+  "web developer",
+  "ui engineer",
+  "associate frontend developer",
+  "product development engineer frontend",
+  "next.js developer",
+  "nextjs developer",
+  "javascript developer",
+  "react node developer",
+  "react typescript developer",
+];
+
+const LOCATION_VARIANTS = [
+  "India",
+  "Remote India",
+  "Remote",
+  "Bengaluru",
+  "Pune",
+  "Hyderabad",
+  "Mumbai",
+  "Chennai",
+  "Gurgaon",
+  "Noida",
+  "Delhi NCR",
+];
+
+function dedupeList(values) {
+  return [...new Set((values || []).filter(Boolean))];
+}
+
+function buildAdvancedSearches(siteKey) {
+  const siteRoles = {
+    foundit: ROLE_VARIANTS,
+    naukri: ROLE_VARIANTS,
+    indeed: ROLE_VARIANTS,
+    linkedin: ROLE_VARIANTS,
+    wellfound: ["react", "frontend", "full stack", "next.js", "mern", "javascript"],
+    instahyre: ["react developer", "frontend developer", "full stack developer", "next.js developer"],
+    cutshort: ["react jobs", "frontend developer jobs", "full stack jobs", "javascript jobs", "nextjs jobs"],
+    hirist: ["react js jobs", "frontend developer jobs", "full stack development jobs", "javascript jobs", "node js jobs"],
+    yc: ["frontend engineer", "full stack engineer", "react engineer", "software engineer"],
+  };
+
+  const searches = [];
+  const titles = siteRoles[siteKey] || ROLE_VARIANTS;
+
+  for (const role of titles) {
+    if (siteKey === "foundit") {
+      for (const loc of LOCATION_VARIANTS) {
+        searches.push(
+          `https://www.foundit.in/srp/results?query=${encodeURIComponent(role)}&location=${encodeURIComponent(loc)}&experienceRanges=0~3&sort=1`,
+        );
+      }
+    } else if (siteKey === "naukri") {
+      const shortRole = role.replace(/\s+/g, "-").replace(/\./g, "");
+      searches.push(
+        `https://www.naukri.com/${shortRole}-jobs?experience=0&experience=1&experience=2&experience=3`,
+      );
+    } else if (siteKey === "indeed") {
+      for (const loc of ["India", "Remote"]) {
+        searches.push(
+          `https://in.indeed.com/jobs?q=${encodeURIComponent(role)}&l=${encodeURIComponent(loc)}&sc=0kf%3Aattr%28DS3S6%29%3B`,
+        );
+      }
+    } else if (siteKey === "linkedin") {
+      for (const loc of ["India", "Remote India", "Bengaluru", "Pune", "Hyderabad"]) {
+        searches.push(
+          `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(role)}&location=${encodeURIComponent(loc)}&f_AL=true&f_E=2%2C3`,
+        );
+      }
+    } else if (siteKey === "wellfound") {
+      searches.push(`https://wellfound.com/jobs?query=${encodeURIComponent(role)}`);
+    } else if (siteKey === "instahyre") {
+      searches.push(`https://www.instahyre.com/candidate/opportunities/?q=${encodeURIComponent(role)}`);
+    } else if (siteKey === "cutshort") {
+      searches.push(`https://cutshort.io/jobs/${encodeURIComponent(role.replace(/\s+/g, "-"))}`);
+    } else if (siteKey === "hirist") {
+      searches.push(`https://www.hirist.tech/c/${encodeURIComponent(role.replace(/\s+/g, "-").replace(/-\+|\+/g, ""))}-jobs`);
+    } else if (siteKey === "yc") {
+      searches.push(`https://www.workatastartup.com/jobs?roles=frontend,fullstack&role=${encodeURIComponent(role)}`);
+    }
+  }
+
+  return dedupeList(searches);
+}
+
 const SITES = {
   wellfound: {
     name: "Wellfound",
     script: "wellfound-auto-apply.js",
     profile: ".wellfound-chrome-profile",
-    searches: ["https://wellfound.com/jobs"],
+    searches: buildAdvancedSearches("wellfound"),
     loginUrl: "https://wellfound.com/login",
     injectOn: (url) => /wellfound\.com/.test(url),
     submittedRe: /application sent|DRY_RUN — would click/i,
@@ -66,7 +160,7 @@ const SITES = {
     name: "Instahyre",
     script: "instahyre-auto-apply.js",
     profile: ".instahyre-chrome-profile",
-    searches: ["https://www.instahyre.com/candidate/opportunities/"],
+    searches: buildAdvancedSearches("instahyre"),
     loginUrl: "https://www.instahyre.com/login",
     injectOn: (url) => /instahyre\.com\/candidate\/opportunities/.test(url),
     submittedRe:
@@ -77,15 +171,7 @@ const SITES = {
     name: "Foundit",
     script: "foundit-auto-apply.js",
     profile: ".foundit-chrome-profile",
-    searches: [
-      "https://www.foundit.in/srp/results?query=react+developer&experienceRanges=0~3&sort=1",
-      "https://www.foundit.in/srp/results?query=frontend+developer&experienceRanges=0~3&sort=1",
-      "https://www.foundit.in/srp/results?query=full+stack+developer&experienceRanges=0~3&sort=1",
-      "https://www.foundit.in/srp/results?query=next.js+developer&experienceRanges=0~3&sort=1",
-      "https://www.foundit.in/srp/results?query=javascript+developer&experienceRanges=0~3&sort=1",
-      "https://www.foundit.in/srp/results?query=mern+stack+developer&experienceRanges=0~3&sort=1",
-      "https://www.foundit.in/srp/results?query=software+engineer&experienceRanges=0~3&sort=1",
-    ],
+    searches: buildAdvancedSearches("foundit"),
     loginUrl:
       "https://www.foundit.in/rio/login?return_url=%2Fseeker%2Fprofile%3Fviewport%3Ddesktop",
     injectOn: (url) => /foundit\.in\/(?:srp|job)/.test(url),
@@ -97,16 +183,7 @@ const SITES = {
     name: "Naukri",
     script: "naukri-auto-apply.js",
     profile: ".naukri-chrome-profile",
-    searches: [
-      "https://www.naukri.com/react-js-developer-jobs?experience=0&experience=1&experience=2&experience=3",
-      "https://www.naukri.com/frontend-developer-jobs?experience=0&experience=1&experience=2&experience=3",
-      "https://www.naukri.com/full-stack-developer-jobs?experience=0&experience=1&experience=2&experience=3",
-      "https://www.naukri.com/next-js-developer-jobs?experience=0&experience=1&experience=2&experience=3",
-      "https://www.naukri.com/javascript-developer-jobs?experience=0&experience=1&experience=2&experience=3",
-      "https://www.naukri.com/mern-stack-developer-jobs?experience=0&experience=1&experience=2&experience=3",
-      "https://www.naukri.com/software-engineer-jobs?experience=0&experience=1&experience=2&experience=3",
-      "https://www.naukri.com/web-developer-jobs?experience=0&experience=1&experience=2&experience=3",
-    ],
+    searches: buildAdvancedSearches("naukri"),
     loginUrl: "https://www.naukri.com/nlogin/login",
     injectOn: (url) => /naukri\.com/.test(url),
     submittedRe:
@@ -117,14 +194,7 @@ const SITES = {
     name: "Cutshort",
     script: "cutshort-auto-apply.js",
     profile: ".cutshort-chrome-profile",
-    searches: [
-      "https://cutshort.io/jobs/react-jobs",
-      "https://cutshort.io/jobs/frontend-developer-jobs",
-      "https://cutshort.io/jobs/full-stack-developer-jobs",
-      "https://cutshort.io/jobs/javascript-jobs",
-      "https://cutshort.io/jobs/nextjs-jobs",
-      "https://cutshort.io/candidate/discover",
-    ],
+    searches: buildAdvancedSearches("cutshort"),
     loginUrl: "https://cutshort.io/login",
     injectOn: (url) => /cutshort\.io/.test(url),
     submittedRe:
@@ -135,13 +205,7 @@ const SITES = {
     name: "Hirist",
     script: "hirist-auto-apply.js",
     profile: ".hirist-chrome-profile",
-    searches: [
-      "https://www.hirist.tech/c/react-js-jobs",
-      "https://www.hirist.tech/c/frontend-development-jobs",
-      "https://www.hirist.tech/c/full-stack-development-jobs",
-      "https://www.hirist.tech/c/javascript-jobs",
-      "https://www.hirist.tech/c/node-js-jobs",
-    ],
+    searches: buildAdvancedSearches("hirist"),
     loginUrl: "https://www.hirist.tech/login",
     injectOn: (url) =>
       /hirist\.(?:tech|com)\/(?:c\/|j\/|job\/)/.test(url),
@@ -153,9 +217,7 @@ const SITES = {
     name: "YC Work at a Startup",
     script: "yc-auto-apply.js",
     profile: ".yc-chrome-profile",
-    searches: [
-      "https://www.workatastartup.com/jobs?roles=frontend,fullstack&role=Frontend%20Engineer&role=Full%20Stack%20Engineer",
-    ],
+    searches: buildAdvancedSearches("yc"),
     loginUrl:
       "https://account.ycombinator.com/?continue=https%3A%2F%2Fwww.workatastartup.com%2F",
     injectOn: (url) => /workatastartup\.com/.test(url),
@@ -167,13 +229,7 @@ const SITES = {
     name: "Indeed",
     script: "indeed-auto-apply.js",
     profile: ".indeed-chrome-profile",
-    searches: [
-      "https://in.indeed.com/jobs?q=react+developer&l=India&sc=0kf%3Aattr%28DS3S6%29%3B",
-      "https://in.indeed.com/jobs?q=frontend+developer&l=India&sc=0kf%3Aattr%28DS3S6%29%3B",
-      "https://in.indeed.com/jobs?q=full+stack+developer&l=India&sc=0kf%3Aattr%28DS3S6%29%3B",
-      "https://in.indeed.com/jobs?q=next.js+developer&l=India&sc=0kf%3Aattr%28DS3S6%29%3B",
-      "https://in.indeed.com/jobs?q=javascript+developer&l=India&sc=0kf%3Aattr%28DS3S6%29%3B",
-    ],
+    searches: buildAdvancedSearches("indeed"),
     loginUrl: "https://secure.indeed.com/auth",
     injectOn: (url) => /indeed\.com/.test(url),
     submittedRe:
@@ -184,13 +240,7 @@ const SITES = {
     name: "LinkedIn",
     script: "linkedin-auto-apply.js",
     profile: ".linkedin-chrome-profile",
-    searches: [
-      "https://www.linkedin.com/jobs/search/?keywords=react%20developer&location=India&f_AL=true&f_E=2%2C3",
-      "https://www.linkedin.com/jobs/search/?keywords=frontend%20developer&location=India&f_AL=true&f_E=2%2C3",
-      "https://www.linkedin.com/jobs/search/?keywords=full%20stack%20developer&location=India&f_AL=true&f_E=2%2C3",
-      "https://www.linkedin.com/jobs/search/?keywords=next.js%20developer&location=India&f_AL=true&f_E=2%2C3",
-      "https://www.linkedin.com/jobs/search/?keywords=javascript%20developer&location=India&f_AL=true&f_E=2%2C3",
-    ],
+    searches: buildAdvancedSearches("linkedin"),
     loginUrl: "https://www.linkedin.com/login",
     injectOn: (url) => /linkedin\.com\/jobs/.test(url),
     submittedRe:

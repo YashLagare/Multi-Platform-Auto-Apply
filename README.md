@@ -75,6 +75,8 @@ Search URLs automatically include experience bounds to pre-filter job portal fee
 - **Hirist Feeds:** category search pages (canonical URLs; legacy `.html?exp=0-3` URLs redirect and drop the experience query)
 - **LinkedIn Feeds:** `&f_AL=true&f_E=2,3`
 
+The runner now expands the query matrix across multiple job-title variants and Indian/remote locations so it covers React, Frontend, Full Stack, MERN, Next.js, and startup-product-engineering titles instead of relying on a tiny fixed URL list.
+
 ### 5. Location Hierarchy
 - **Priority 1:** Bengaluru, Pune, Hyderabad *(Remote, Hybrid, On-site)*
 - **Priority 2:** Remote (India/Global), Mumbai, Chennai, Gurgaon / Gurugram, Noida / Delhi NCR *(Remote, Hybrid, On-site)*
