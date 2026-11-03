@@ -7,17 +7,21 @@ const fs = require('fs');
 const path = require('path');
 
 const CSV_PATH = path.join(__dirname, 'applications.csv');
+const PLATFORMS = [
+  'wellfound',
+  'instahyre',
+  'foundit',
+  'naukri',
+  'cutshort',
+  'hirist',
+  'yc',
+  'indeed',
+  'linkedin',
+];
 
-if (!fs.existsSync(CSV_PATH)) {
-  console.log('❌ No applications.csv file found yet. Run an auto-apply task first!');
-  process.exit(0);
-}
-
-const content = fs.readFileSync(CSV_PATH, 'utf8').trim();
-if (!content) {
-  console.log('ℹ applications.csv is currently empty.');
-  process.exit(0);
-}
+const content = fs.existsSync(CSV_PATH)
+  ? fs.readFileSync(CSV_PATH, 'utf8').trim()
+  : '';
 
 const lines = content.split('\n').filter(Boolean);
 const records = [];
@@ -78,9 +82,49 @@ for (const [p, count] of Object.entries(byPlatform)) {
 const avgScore = scoreCount ? Math.round(totalScore / scoreCount) : 0;
 console.log(`\n⭐ Average Match Score: ${avgScore}/100`);
 
+const searchPerformance = [];
+for (const platform of PLATFORMS) {
+  const statePath = path.join(
+    __dirname,
+    `search-performance-${platform}.json`,
+  );
+  if (!fs.existsSync(statePath)) continue;
+  try {
+    const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    for (const [url, metric] of Object.entries(state.searches || {})) {
+      searchPerformance.push({ platform, url, ...metric });
+    }
+  } catch (error) {
+    console.warn(`⚠ Could not read ${path.basename(statePath)}: ${error.message}`);
+  }
+}
+
+console.log('\n🔎 Highest-yield searches (eligible jobs, then confirmed applications):');
+if (searchPerformance.length) {
+  searchPerformance
+    .sort(
+      (a, b) =>
+        b.eligibleJobs - a.eligibleJobs ||
+        b.confirmedApplications - a.confirmedApplications ||
+        b.visits - a.visits,
+    )
+    .slice(0, 10)
+    .forEach((search, index) => {
+      console.log(
+        `  ${index + 1}. [${search.platform.toUpperCase()}] ${search.query} ${search.location ? `(${search.location})` : ''} — eligible: ${search.eligibleJobs}, confirmed: ${search.confirmedApplications}, visits: ${search.visits}`,
+      );
+    });
+} else {
+  console.log('  No search data yet. Run a dry run or live application first.');
+}
+
 console.log('\n📋 Recent 5 Applications:');
-records.slice(-5).reverse().forEach((r, idx) => {
-  console.log(`  ${idx + 1}. [${r.platform.toUpperCase()}] ${r.title} @ ${r.company} (Score: ${r.scoreRaw}) — ${r.date}`);
-});
+if (records.length) {
+  records.slice(-5).reverse().forEach((r, idx) => {
+    console.log(`  ${idx + 1}. [${r.platform.toUpperCase()}] ${r.title} @ ${r.company} (Score: ${r.scoreRaw}) — ${r.date}`);
+  });
+} else {
+  console.log('  No applications recorded yet.');
+}
 
 console.log('\n===============================================================\n');

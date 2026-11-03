@@ -36,6 +36,7 @@ pnpm-debug.log*
 *.csv
 apply-state-*.json
 applied-jobs-*.json
+search-performance-*.json
 applied-jobs.json
 *.tmp
 *.temp

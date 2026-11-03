@@ -26,6 +26,11 @@
 const path = require("path");
 const fs = require("fs");
 const { CV, openrouterKey, geminiKey, aiKey } = require("./config");
+const {
+  buildAdvancedSearches,
+  rotateSearches,
+  recordSearchActivity,
+} = require("./search-planner");
 
 let chromium;
 try {
@@ -50,100 +55,6 @@ process.on("uncaughtException", (e) =>
 const SITE_ARG = (process.argv[2] || "wellfound").toLowerCase();
 const LOGIN_MODE = process.argv.includes("login");
 const LIVE = process.argv.includes("--live");
-
-const ROLE_VARIANTS = [
-  "react developer",
-  "react js developer",
-  "frontend engineer",
-  "frontend developer",
-  "full stack developer",
-  "full-stack engineer",
-  "mern stack developer",
-  "software engineer",
-  "web developer",
-  "ui engineer",
-  "associate frontend developer",
-  "product development engineer frontend",
-  "next.js developer",
-  "nextjs developer",
-  "javascript developer",
-  "react node developer",
-  "react typescript developer",
-];
-
-const LOCATION_VARIANTS = [
-  "India",
-  "Remote India",
-  "Remote",
-  "Bengaluru",
-  "Pune",
-  "Hyderabad",
-  "Mumbai",
-  "Chennai",
-  "Gurgaon",
-  "Noida",
-  "Delhi NCR",
-];
-
-function dedupeList(values) {
-  return [...new Set((values || []).filter(Boolean))];
-}
-
-function buildAdvancedSearches(siteKey) {
-  const siteRoles = {
-    foundit: ROLE_VARIANTS,
-    naukri: ROLE_VARIANTS,
-    indeed: ROLE_VARIANTS,
-    linkedin: ROLE_VARIANTS,
-    wellfound: ["react", "frontend", "full stack", "next.js", "mern", "javascript"],
-    instahyre: ["react developer", "frontend developer", "full stack developer", "next.js developer"],
-    cutshort: ["react jobs", "frontend developer jobs", "full stack jobs", "javascript jobs", "nextjs jobs"],
-    hirist: ["react js jobs", "frontend developer jobs", "full stack development jobs", "javascript jobs", "node js jobs"],
-    yc: ["frontend engineer", "full stack engineer", "react engineer", "software engineer"],
-  };
-
-  const searches = [];
-  const titles = siteRoles[siteKey] || ROLE_VARIANTS;
-
-  for (const role of titles) {
-    if (siteKey === "foundit") {
-      for (const loc of LOCATION_VARIANTS) {
-        searches.push(
-          `https://www.foundit.in/srp/results?query=${encodeURIComponent(role)}&location=${encodeURIComponent(loc)}&experienceRanges=0~3&sort=1`,
-        );
-      }
-    } else if (siteKey === "naukri") {
-      const shortRole = role.replace(/\s+/g, "-").replace(/\./g, "");
-      searches.push(
-        `https://www.naukri.com/${shortRole}-jobs?experience=0&experience=1&experience=2&experience=3`,
-      );
-    } else if (siteKey === "indeed") {
-      for (const loc of ["India", "Remote"]) {
-        searches.push(
-          `https://in.indeed.com/jobs?q=${encodeURIComponent(role)}&l=${encodeURIComponent(loc)}&sc=0kf%3Aattr%28DS3S6%29%3B`,
-        );
-      }
-    } else if (siteKey === "linkedin") {
-      for (const loc of ["India", "Remote India", "Bengaluru", "Pune", "Hyderabad"]) {
-        searches.push(
-          `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(role)}&location=${encodeURIComponent(loc)}&f_AL=true&f_E=2%2C3`,
-        );
-      }
-    } else if (siteKey === "wellfound") {
-      searches.push(`https://wellfound.com/jobs?query=${encodeURIComponent(role)}`);
-    } else if (siteKey === "instahyre") {
-      searches.push(`https://www.instahyre.com/candidate/opportunities/?q=${encodeURIComponent(role)}`);
-    } else if (siteKey === "cutshort") {
-      searches.push(`https://cutshort.io/jobs/${encodeURIComponent(role.replace(/\s+/g, "-"))}`);
-    } else if (siteKey === "hirist") {
-      searches.push(`https://www.hirist.tech/c/${encodeURIComponent(role.replace(/\s+/g, "-").replace(/-\+|\+/g, ""))}-jobs`);
-    } else if (siteKey === "yc") {
-      searches.push(`https://www.workatastartup.com/jobs?roles=frontend,fullstack&role=${encodeURIComponent(role)}`);
-    }
-  }
-
-  return dedupeList(searches);
-}
 
 const SITES = {
   wellfound: {
@@ -260,6 +171,10 @@ if (!site) {
 // ======== Persistent Job ID Database ========
 const APPLIED_DB_FILE = path.join(__dirname, `applied-jobs-${SITE_ARG}.json`);
 const CSV_FILE = path.join(__dirname, "applications.csv");
+const SEARCH_STATE_FILE = path.join(
+  __dirname,
+  `search-performance-${SITE_ARG}.json`,
+);
 
 function loadAppliedDatabase() {
   let db = { appliedIds: {} };
@@ -357,6 +272,40 @@ const MAX_RUNTIME_MS = 100 * 60 * 1000;
 
 const log = (msg) =>
   console.log(`[${new Date().toLocaleString()}] [${SITE_ARG}] ${msg}`);
+
+function loadSearchState() {
+  try {
+    const saved = JSON.parse(fs.readFileSync(SEARCH_STATE_FILE, "utf8"));
+    return {
+      nextSearchIndex:
+        Number.isInteger(saved.nextSearchIndex) && saved.nextSearchIndex >= 0
+          ? saved.nextSearchIndex
+          : 0,
+      searches:
+        saved.searches && typeof saved.searches === "object"
+          ? saved.searches
+          : {},
+    };
+  } catch (e) {
+    if (e.code !== "ENOENT") {
+      console.error(
+        `[${SITE_ARG}] Could not read search performance state: ${e.message}`,
+      );
+    }
+    return { nextSearchIndex: 0, searches: {} };
+  }
+}
+
+const searchState = loadSearchState();
+function saveSearchState() {
+  try {
+    fs.writeFileSync(SEARCH_STATE_FILE, JSON.stringify(searchState, null, 2));
+  } catch (e) {
+    console.error(
+      `[${SITE_ARG}] Could not save search performance state: ${e.message}`,
+    );
+  }
+}
 
 // CSV Logging
 const SKILLS = [
@@ -526,6 +475,7 @@ function buildInjection() {
   let submitted = 0;
   let lastActivity = Date.now();
   let pendingJob = null;
+  let activeSearchUrl = "";
   const isHirist = SITE_ARG === "hirist";
   let runnerClosing = false;
   let hiristForbiddenJobDataRequest = null;
@@ -616,18 +566,37 @@ function buildInjection() {
           title: title.trim(),
           company: (company || "").replace(/^\?$/, "").trim(),
           link: (parts[1] || "").trim(),
+          searchUrl: activeSearchUrl,
           salary: "",
           skills: "",
           jd: "",
           score: "",
           breakdown: "",
         };
+        recordSearchActivity(
+          searchState,
+          activeSearchUrl,
+          "evaluated",
+          undefined,
+          jobId,
+        );
+        saveSearchState();
       }
 
       // Capture score
       const mScore = clean.match(/(?:Evaluation Score|Score): (\d+)\/100/);
       if (mScore && pendingJob) {
         pendingJob.score = mScore[1];
+        if (Number(mScore[1]) >= 65 && pendingJob.searchUrl) {
+          recordSearchActivity(
+            searchState,
+            pendingJob.searchUrl,
+            "eligible",
+            undefined,
+            pendingJob.id,
+          );
+          saveSearchState();
+        }
       }
 
       const mBreak = clean.match(/Breakdown: (.+)/);
@@ -644,6 +613,14 @@ function buildInjection() {
           recordAppliedJob(pendingJob.id, pendingJob);
         }
         if (LIVE) {
+          if (pendingJob && pendingJob.searchUrl) {
+            recordSearchActivity(
+              searchState,
+              pendingJob.searchUrl,
+              "confirmed",
+            );
+            saveSearchState();
+          }
           bumpDayCount();
           try {
             if (pendingJob && pendingJob.title && pendingJob.title !== "Unknown") { logApplication(pendingJob); } else { log("⚠️ Skipping corrupt CSV entry — pendingJob missing"); }
@@ -665,14 +642,16 @@ function buildInjection() {
   ctx.pages().forEach(wire);
   ctx.on("page", wire);
 
-  for (
-    let searchIdx = 0;
-    searchIdx < site.searches.length &&
-    submitted < TARGET &&
-    Date.now() < deadline;
-    searchIdx++
-  ) {
-    const searchUrl = site.searches[searchIdx];
+  const searchPlan = rotateSearches(
+    site.searches,
+    searchState.nextSearchIndex,
+  );
+  for (const { index: searchIdx, url: searchUrl } of searchPlan) {
+    if (submitted >= TARGET || Date.now() >= deadline) break;
+    activeSearchUrl = searchUrl;
+    searchState.nextSearchIndex = (searchIdx + 1) % site.searches.length;
+    recordSearchActivity(searchState, searchUrl, "visit");
+    saveSearchState();
     log(
       `Navigating to search URL (${searchIdx + 1}/${site.searches.length}): ${searchUrl}`,
     );

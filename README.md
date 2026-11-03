@@ -77,6 +77,8 @@ Search URLs automatically include experience bounds to pre-filter job portal fee
 
 The runner now expands the query matrix across multiple job-title variants and Indian/remote locations so it covers React, Frontend, Full Stack, MERN, Next.js, and startup-product-engineering titles instead of relying on a tiny fixed URL list.
 
+Search URLs rotate across runs from a saved per-platform cursor instead of restarting at the first query. Indeed and LinkedIn searches request recent listings (last 7 days) and sort by date where supported. The runner records visits, unique evaluated/eligible jobs, and confirmed live applications per search in `search-performance-<platform>.json`; `npm run stats` shows the highest-yield searches. Dry runs count eligible jobs but never count submissions as confirmed applications.
+
 ### 5. Location Hierarchy
 - **Priority 1:** Bengaluru, Pune, Hyderabad *(Remote, Hybrid, On-site)*
 - **Priority 2:** Remote (India/Global), Mumbai, Chennai, Gurgaon / Gurugram, Noida / Delhi NCR *(Remote, Hybrid, On-site)*
@@ -102,7 +104,8 @@ Fill in your details in `.env` once. All 9 platforms share the exact same config
 | Platform | Step 1: One-Time Login | Step 2: Safe Dry Run | Step 3: Apply Live |
 |---|---|---|---|
 | **Wellfound** | `npm run login:wellfound` | `npm run dry-run:wellfound` | `npm run apply:wellfound` |
-| **Instahyre** | `npm run login:instahyre` | `npm run dry-run:instahyre` | `npm run apply:instahyre` |
+| **Instahyre** | `npm run login:instahyre` | `npm run dry-run:instahyre` | `
+` |
 | **Foundit** | `npm run login:foundit` | `npm run dry-run:foundit` | `npm run apply:foundit` |
 | **Naukri** | `npm run login:naukri` | `npm run dry-run:naukri` | `npm run apply:naukri` |
 | **Cutshort** | `npm run login:cutshort` | `npm run dry-run:cutshort` | `npm run apply:cutshort` |
