@@ -104,8 +104,7 @@ Fill in your details in `.env` once. All 9 platforms share the exact same config
 | Platform | Step 1: One-Time Login | Step 2: Safe Dry Run | Step 3: Apply Live |
 |---|---|---|---|
 | **Wellfound** | `npm run login:wellfound` | `npm run dry-run:wellfound` | `npm run apply:wellfound` |
-| **Instahyre** | `npm run login:instahyre` | `npm run dry-run:instahyre` | `
-` |
+| **Instahyre** | `npm run login:instahyre` | `npm run dry-run:instahyre` | `npm run apply:instahyre` |
 | **Foundit** | `npm run login:foundit` | `npm run dry-run:foundit` | `npm run apply:foundit` |
 | **Naukri** | `npm run login:naukri` | `npm run dry-run:naukri` | `npm run apply:naukri` |
 | **Cutshort** | `npm run login:cutshort` | `npm run dry-run:cutshort` | `npm run apply:cutshort` |
