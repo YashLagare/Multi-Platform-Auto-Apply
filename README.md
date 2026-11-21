@@ -133,6 +133,20 @@ View your live application summary and platform breakdown anytime:
 npm run stats
 ```
 
+Record an application outcome with the exact job link from `applications.csv`:
+```powershell
+npm run update-status -- "https://example.com/job/123" "interview" "Recruiter scheduled a call"
+```
+
+If upgrading an existing CSV, migrate its history once:
+```powershell
+npm run migrate-outcomes
+```
+
+Valid statuses: `applied`, `viewed`, `phone-screen`, `assessment`, `interview`, `offer`, `rejected`, `withdrawn`.
+
+The CSV now tracks the default outcome `applied`, outcome date, and optional outcome note. Existing CSV rows remain compatible and are treated as applied unless updated.
+
 ---
 
 ## 🧪 Testing & Verification

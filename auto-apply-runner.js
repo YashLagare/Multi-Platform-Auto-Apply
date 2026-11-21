@@ -360,8 +360,27 @@ function logApplication(job) {
           "Match Score",
           "Job Link",
           "Job Description",
+          "Outcome",
+          "Outcome Date",
+          "Outcome Note",
         ]),
     );
+  } else {
+    const firstLine = fs
+      .readFileSync(CSV_FILE, "utf8")
+      .split(/\r?\n/, 1)[0]
+      .replace(/^\uFEFF/, "");
+    if (!firstLine.includes('"Outcome"')) {
+      const content = fs.readFileSync(CSV_FILE, "utf8").replace(/^\uFEFF/, "");
+      const lines = content.split(/\r?\n/).filter(Boolean);
+      lines[0] =
+        lines[0].replace(/\r?\n$/, "") +
+        ',"Outcome","Outcome Date","Outcome Note"';
+      for (let i = 1; i < lines.length; i++) {
+        lines[i] += ',"applied","",""';
+      }
+      fs.writeFileSync(CSV_FILE, "\uFEFF" + lines.join("\n") + "\n");
+    }
   }
   fs.appendFileSync(
     CSV_FILE,
@@ -376,6 +395,9 @@ function logApplication(job) {
       job.score ? `${job.score}/100` : "",
       getJobLink(job.id, job.link),
       (job.jd || job.description || "").slice(0, 1200),
+      "applied",
+      new Date().toLocaleString(),
+      "",
     ]),
   );
 }

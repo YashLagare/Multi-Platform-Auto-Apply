@@ -26,10 +26,31 @@ const content = fs.existsSync(CSV_PATH)
 const lines = content.split('\n').filter(Boolean);
 const records = [];
 
-for (const line of lines) {
-  const matches = line.match(/"([^"]*)"/g);
-  if (!matches) continue;
-  const cols = matches.map((m) => m.replace(/^"|"$/g, ''));
+function parseCsvLine(line) {
+  const cols = [];
+  let col = '';
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"' && quoted && line[i + 1] === '"') {
+      col += '"';
+      i++;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === ',' && !quoted) {
+      cols.push(col);
+      col = '';
+    } else {
+      col += char;
+    }
+  }
+  cols.push(col);
+  return cols;
+}
+
+for (let i = 1; i < lines.length; i++) {
+  const cols = parseCsvLine(lines[i]);
+  if (!cols.length) continue;
   records.push({
     date: cols[0] || '',
     platform: (cols[1] || 'unknown').toLowerCase(),
@@ -38,6 +59,9 @@ for (const line of lines) {
     skills: cols[5] || 'N/A',
     scoreRaw: cols[6] || '0/100',
     id: cols[7] || '',
+    outcome: (cols[9] || 'applied').toLowerCase(),
+    outcomeDate: cols[10] || '',
+    outcomeNote: cols[11] || '',
   });
 }
 
@@ -81,6 +105,30 @@ for (const [p, count] of Object.entries(byPlatform)) {
 
 const avgScore = scoreCount ? Math.round(totalScore / scoreCount) : 0;
 console.log(`\n⭐ Average Match Score: ${avgScore}/100`);
+
+const outcomes = {};
+for (const r of records) {
+  outcomes[r.outcome] = (outcomes[r.outcome] || 0) + 1;
+}
+
+console.log('\n📈 Application Outcome Funnel:');
+const funnelStatuses = [
+  'applied',
+  'viewed',
+  'phone-screen',
+  'assessment',
+  'interview',
+  'offer',
+  'rejected',
+  'withdrawn',
+];
+for (const status of funnelStatuses) {
+  console.log(`  ${status.padEnd(13)}: ${outcomes[status] || 0}`);
+}
+const interviewCount = outcomes['interview'] || 0;
+const offerCount = outcomes['offer'] || 0;
+console.log(`\n  Interview conversion: ${records.length ? ((interviewCount / records.length) * 100).toFixed(1) : '0.0'}%`);
+console.log(`  Offer conversion: ${records.length ? ((offerCount / records.length) * 100).toFixed(1) : '0.0'}%`);
 
 const searchPerformance = [];
 for (const platform of PLATFORMS) {
