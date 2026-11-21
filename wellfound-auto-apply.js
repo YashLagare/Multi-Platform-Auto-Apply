@@ -810,6 +810,25 @@ ${CV.name}`;
       continue;
     }
 
+    const qualityCheck = window.__APPLY_POLICY_HELPERS.checkJobQuality(
+      Object.assign({}, job, { description: jdText }),
+      __CFG.eligibilityPolicy,
+    );
+    if (!qualityCheck.pass) {
+      log(`🚫 [SKIP: ${qualityCheck.reason}] Job ID: ${job.id}`);
+      appliedJobIds[job.id] = true;
+      (
+        document.querySelector(
+          'button[aria-label="Close" i], [class*="Modal" i] button[class*="close" i]',
+        ) || findButtonByText(document, /^×$|^✕$/)
+      )?.click();
+      await sleep(1000);
+      continue;
+    }
+    qualityCheck.warnings.forEach((warning) =>
+      log(`⚠ [JOB QUALITY CAUTION: ${warning}] Job ID: ${job.id}`),
+    );
+
     // 4. Experience Exclusion Check
     const expCheck = checkExperienceExclusion(jdText);
     if (!expCheck.pass) {
@@ -855,7 +874,12 @@ ${CV.name}`;
     }
 
     // ================= LAYER 2: MATCH SCORING (0-100) =================
-    const matchResult = calculateMatchScore(job, jdText);
+    const matchResult = window.__APPLY_POLICY_HELPERS.applyQualityAdjustment(
+      calculateMatchScore(job, jdText),
+      qualityCheck,
+      CONFIG.SCORE_THRESHOLD,
+      CONFIG.HIGH_SCORE_THRESHOLD,
+    );
     log(
       `  📊 Evaluation Score: ${matchResult.score}/100 [${matchResult.action}]`,
     );

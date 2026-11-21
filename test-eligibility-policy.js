@@ -5,6 +5,8 @@ const {
   checkTitle,
   checkExperience,
   checkLocation,
+  checkJobQuality,
+  applyQualityAdjustment,
   browserHelperSource,
 } = require("./eligibility-policy");
 
@@ -28,6 +30,104 @@ assert.strictEqual(checkLocation("Mumbai").pass, true);
 assert.strictEqual(checkLocation("Ahmedabad").pass, true);
 assert.strictEqual(checkLocation("Jaipur, onsite").pass, false);
 assert.strictEqual(checkLocation("Remote, US only").pass, false);
+
+assert.strictEqual(
+  checkJobQuality({
+    title: "React Developer",
+    employmentType: "Full-time",
+    company: "Acme",
+    description: "Build React applications with our product team.",
+  }).pass,
+  true,
+);
+assert.strictEqual(
+  checkJobQuality({
+    title: "React Developer - Contract",
+    description: "Build React applications with our product team.",
+  }).reason,
+  "NON_FULL_TIME_ROLE",
+);
+assert.strictEqual(
+  checkJobQuality({
+    title: "React Developer",
+    employmentType: "Internship",
+  }).reason,
+  "NON_FULL_TIME_ROLE",
+);
+assert.strictEqual(
+  checkJobQuality(
+    { title: "Frontend Engineer", company: "Acme, Inc." },
+    { ...POLICY, companyBlocklist: ["Acme Inc"] },
+  ).reason,
+  "COMPANY_BLOCKLIST",
+);
+assert.strictEqual(
+  checkJobQuality({
+    title: "Frontend Engineer",
+    description: "Must have 3 years of experience with Angular.",
+  }).reason,
+  "UNRELATED_REQUIRED_STACK",
+);
+assert.strictEqual(
+  checkJobQuality({
+    title: "Frontend Engineer",
+    description: "Must have experience with React and Angular.",
+  }).pass,
+  true,
+);
+const shortDescriptionCheck = checkJobQuality({
+  title: "React Developer",
+  description: "Urgent hiring for a React developer.",
+});
+assert.strictEqual(shortDescriptionCheck.pass, true);
+assert.strictEqual(shortDescriptionCheck.penalty, 5);
+assert(shortDescriptionCheck.warnings.includes("URGENT_HIRING_LANGUAGE"));
+const urgentHiringCheck = checkJobQuality({
+  title: "React Developer",
+  description: `Urgent hiring. ${"Build React products. ".repeat(8)}`,
+});
+assert.strictEqual(urgentHiringCheck.penalty, 0);
+assert(urgentHiringCheck.warnings.includes("URGENT_HIRING_LANGUAGE"));
+assert.deepStrictEqual(
+  checkJobQuality({ title: "React Developer" }).warnings,
+  ["DESCRIPTION_UNAVAILABLE"],
+);
+const repeatedParagraph =
+  "Build and maintain customer-facing React features. ".repeat(3);
+const repetitiveDescriptionCheck = checkJobQuality({
+  title: "React Developer",
+  description: `${repeatedParagraph}\n${repeatedParagraph}\n${repeatedParagraph}`,
+});
+assert(repetitiveDescriptionCheck.warnings.includes("REPETITIVE_DESCRIPTION"));
+assert.strictEqual(repetitiveDescriptionCheck.penalty, 10);
+
+const adjustedResult = applyQualityAdjustment(
+  {
+    score: 60,
+    breakdown: "Role: React (+25)",
+    passed: true,
+    action: "MODERATE_APPLY",
+  },
+  shortDescriptionCheck,
+  55,
+  75,
+);
+assert.strictEqual(adjustedResult.score, 55);
+assert.strictEqual(adjustedResult.passed, true);
+const rejectedBorderlineResult = applyQualityAdjustment(
+  {
+    score: 59,
+    breakdown: "Role: React (+25)",
+    passed: true,
+    action: "MODERATE_APPLY",
+  },
+  shortDescriptionCheck,
+  55,
+  75,
+);
+assert.strictEqual(rejectedBorderlineResult.score, 54);
+assert.strictEqual(rejectedBorderlineResult.passed, false);
+assert.strictEqual(rejectedBorderlineResult.action, "LOW_SCORE_SKIP");
 
 assert.strictEqual(POLICY.salary.minimumLpa, 3);
 assert.deepStrictEqual(POLICY.salary.targetRangeLpa, [4, 6]);
@@ -54,5 +154,25 @@ assert.strictEqual(
   ).pass,
   true,
 );
+assert.strictEqual(
+  browserContext.window.__APPLY_POLICY_HELPERS.checkJobQuality(
+    { title: "React Developer - Part-time" },
+    POLICY,
+  ).pass,
+  false,
+);
+const browserAdjustedResult =
+  browserContext.window.__APPLY_POLICY_HELPERS.applyQualityAdjustment(
+    {
+      score: 60,
+      breakdown: "Role: React (+25)",
+      passed: true,
+      action: "MODERATE_APPLY",
+    },
+    shortDescriptionCheck,
+    55,
+    75,
+  );
+assert.strictEqual(browserAdjustedResult.score, 55);
 
 console.log("Shared eligibility policy tests passed.");

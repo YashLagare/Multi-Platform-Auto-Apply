@@ -29,9 +29,10 @@ Built with **Node.js, Playwright Stealth, and Google Gemini AI**, it features an
    │   ├── 1. Already Applied? (Check applied-jobs-*.json & CSV) ────► ❌ SKIP: ALREADY_APPLIED
    │   ├── 2. External Redirect? (Skip non-Quick Apply ATS links) ──► ❌ SKIP: EXTERNAL_ATS_REDIRECT
    │   ├── 3. Title Hard Exclusion? (Co-Founder, CTO, Senior, etc.) ──► ❌ SKIP: HARD_TITLE_EXCLUSION
-   │   ├── 4. Experience Limit? (4+, 5+, 2-5 yrs, 3-5 yrs, 4-8 yrs) ─► ❌ SKIP: EXPERIENCE_EXCEEDS_LIMIT
-   │   ├── 5. Location Fit? (P1/P2/P3 city OR Remote India) ─────────► ❌ SKIP: NON_PRIORITY_ONSITE_LOCATION
-   │   └── 6. Full Stack Check (Must contain React/Next/MERN in JD) ──► ❌ SKIP: FULLSTACK_MISSING_REACT_STACK
+   │   ├── 4. Job Quality? (Employment type, required stack, optional company exclusions)
+   │   ├── 5. Experience Limit? (4+, 5+, 2-5 yrs, 3-5 yrs, 4-8 yrs) ─► ❌ SKIP: EXPERIENCE_EXCEEDS_LIMIT
+   │   ├── 6. Location Fit? (P1/P2/P3 city OR Remote India) ─────────► ❌ SKIP: NON_PRIORITY_ONSITE_LOCATION
+   │   └── 7. Full Stack Check (Must contain React/Next/MERN in JD) ──► ❌ SKIP: FULLSTACK_MISSING_REACT_STACK
    │
    └── Layer 2: Match Scoring Engine (0–100 Points)
        ├── Role Alignment (Max 25 pts)
@@ -84,6 +85,8 @@ The runner now expands the query matrix across multiple job-title variants and I
 Search URLs rotate across runs from a saved per-platform cursor instead of restarting at the first query. Indeed and LinkedIn searches request recent listings (last 7 days) and sort by date where supported. The runner records visits, unique evaluated/eligible jobs, and confirmed live applications per search in `search-performance-<platform>.json`; `npm run stats` shows the highest-yield searches. Dry runs count eligible jobs but never count submissions as confirmed applications.
 
 The shared eligibility policy in `eligibility-policy.js` is the source of truth for target role titles, excluded titles/stacks, a 0–2 year experience limit, location priorities, search terms, and per-platform score thresholds. Salary preference is ₹3 LPA minimum (target ₹4–6 LPA); salary is informational only for now because platforms expose it inconsistently, so no listing is auto-rejected based on salary.
+
+Job-quality checks skip clearly labeled internships, contract/freelance/part-time roles, and postings whose explicit required stack conflicts with the target JavaScript stack. Short or repetitive descriptions reduce the match score; urgent-hiring language is logged as a caution rather than treated as proof of a bad listing. To exclude companies based on your own research, set `EXCLUDED_COMPANIES` in `.env` to exact names separated by `||`. This is a manual exclusion list; the automation does not infer company reputation.
 
 ### 5. Location Hierarchy
 - **Priority 1:** Bengaluru, Pune, Hyderabad *(Remote, Hybrid, On-site)*

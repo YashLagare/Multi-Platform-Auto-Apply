@@ -702,6 +702,21 @@
       return;
     }
 
+    const qualityCheck = window.__APPLY_POLICY_HELPERS.checkJobQuality(
+      Object.assign({}, job, {
+        description: "",
+        skills: skillsEl?.textContent || "",
+      }),
+      __CFG.eligibilityPolicy,
+    );
+    if (!qualityCheck.pass) {
+      log(`🚫 [SKIP: ${qualityCheck.reason}] Job ID: ${jobId}`);
+      return;
+    }
+    qualityCheck.warnings.forEach((warning) =>
+      log(`⚠ [JOB QUALITY CAUTION: ${warning}] Job ID: ${jobId}`),
+    );
+
     const expCheck = checkExperienceExclusion(experience || job.description);
     if (!expCheck.pass) {
       log(`🚫 [SKIP: ${expCheck.reason}] Job ID: ${jobId} ("${title}")`);
@@ -714,7 +729,12 @@
       return;
     }
 
-    const matchResult = calculateMatchScore(job);
+    const matchResult = window.__APPLY_POLICY_HELPERS.applyQualityAdjustment(
+      calculateMatchScore(job),
+      qualityCheck,
+      CONFIG.SCORE_THRESHOLD,
+      CONFIG.HIGH_SCORE_THRESHOLD,
+    );
     log(`Evaluating: ${title} @ ${company || "Company"} | ID: ${jobId}`);
     log(
       `  📊 Score: ${matchResult.score}/100 [${matchResult.action}] | Breakdown: ${matchResult.breakdown}`,
@@ -821,6 +841,19 @@
       continue;
     }
 
+    const qualityCheck = window.__APPLY_POLICY_HELPERS.checkJobQuality(
+      job,
+      __CFG.eligibilityPolicy,
+    );
+    if (!qualityCheck.pass) {
+      log(`🚫 [SKIP: ${qualityCheck.reason}] Job ID: ${job.id}`);
+      appliedJobIds[job.id] = true;
+      continue;
+    }
+    qualityCheck.warnings.forEach((warning) =>
+      log(`⚠ [JOB QUALITY CAUTION: ${warning}] Job ID: ${job.id}`),
+    );
+
     // 4. Experience Hard Exclusion Check
     const expCheck = checkExperienceExclusion(
       job.experience || job.description,
@@ -855,7 +888,12 @@
     }
 
     // ================= LAYER 2: MATCH SCORING (0-100) =================
-    const matchResult = calculateMatchScore(job);
+    const matchResult = window.__APPLY_POLICY_HELPERS.applyQualityAdjustment(
+      calculateMatchScore(job),
+      qualityCheck,
+      CONFIG.SCORE_THRESHOLD,
+      CONFIG.HIGH_SCORE_THRESHOLD,
+    );
     log(
       `▶ Evaluating: ${job.title} @ ${job.company || "Company"} | ID: ${job.id}`,
     );

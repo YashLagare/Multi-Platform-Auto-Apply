@@ -569,6 +569,18 @@
         continue;
       }
 
+      const qualityCheck = window.__APPLY_POLICY_HELPERS.checkJobQuality(
+        card,
+        __CFG.eligibilityPolicy,
+      );
+      if (!qualityCheck.pass) {
+        log(`  ❌ [Layer 1 REJECT] ${qualityCheck.reason}`);
+        continue;
+      }
+      qualityCheck.warnings.forEach((warning) =>
+        log(`  ⚠ [JOB QUALITY CAUTION] ${warning}`),
+      );
+
       const expCheck = checkExperienceLimit(card.experience);
       if (!expCheck.pass) {
         log(`  ❌ [Layer 1 REJECT] ${expCheck.reason}`);
@@ -588,7 +600,12 @@
       }
 
       // Layer 2: Match Scoring Engine
-      const evalResult = calculateMatchScore(card);
+      const evalResult = window.__APPLY_POLICY_HELPERS.applyQualityAdjustment(
+        calculateMatchScore(card),
+        qualityCheck,
+        CONFIG.SCORE_THRESHOLD,
+        CONFIG.HIGH_SCORE_THRESHOLD,
+      );
       log(`  🎯 Evaluation Score: ${evalResult.score}/100 [${evalResult.action}]`);
       log(`  📊 Breakdown: ${evalResult.breakdown}`);
 

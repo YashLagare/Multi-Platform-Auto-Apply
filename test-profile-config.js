@@ -2,7 +2,7 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
-const { CV } = require("./config");
+const { CV, eligibilityPolicy } = require("./config");
 const { browserHelperSource } = require("./eligibility-policy");
 
 assert(CV.profileHeadline);
@@ -11,6 +11,7 @@ assert(CV.experienceSummary);
 assert(CV.skills.includes("React"));
 assert(CV.highlights.length >= 3);
 assert(Number.isFinite(Number(CV.experienceYears)));
+assert(Array.isArray(eligibilityPolicy.companyBlocklist));
 
 assert.deepStrictEqual(Object.keys(CV.aiProfile), [
   "headline",
@@ -40,7 +41,7 @@ for (const script of scripts) {
   const injected = `(async () => {
     window.__APPLY_CONFIG = ${JSON.stringify({
       CV,
-      eligibilityPolicy: require("./eligibility-policy").POLICY,
+      eligibilityPolicy,
       platform: "wellfound",
     })};
     window.__APPLY_POLICY_HELPERS = {${browserHelperSource()}};

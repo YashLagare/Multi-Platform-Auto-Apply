@@ -611,6 +611,19 @@
       continue;
     }
 
+    const qualityCheck = window.__APPLY_POLICY_HELPERS.checkJobQuality(
+      job,
+      __CFG.eligibilityPolicy,
+    );
+    if (!qualityCheck.pass) {
+      log(`🚫 [SKIP: ${qualityCheck.reason}] Opportunity ID: ${job.id}`);
+      appliedJobIds[job.id] = true;
+      continue;
+    }
+    qualityCheck.warnings.forEach((warning) =>
+      log(`⚠ [JOB QUALITY CAUTION: ${warning}] Opportunity ID: ${job.id}`),
+    );
+
     // 3. Experience Hard Exclusion Check
     const expCheck = checkExperienceExclusion(
       job.experience || job.description,
@@ -647,7 +660,12 @@
     }
 
     // ================= LAYER 2: MATCH SCORING (0-100) =================
-    const matchResult = calculateMatchScore(job);
+    const matchResult = window.__APPLY_POLICY_HELPERS.applyQualityAdjustment(
+      calculateMatchScore(job),
+      qualityCheck,
+      CONFIG.SCORE_THRESHOLD,
+      CONFIG.HIGH_SCORE_THRESHOLD,
+    );
     log(
       `▶ Evaluating: ${job.title} @ ${job.company || "Company"} | ID: ${job.id}`,
     );

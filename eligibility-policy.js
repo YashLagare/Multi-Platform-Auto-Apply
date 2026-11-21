@@ -61,7 +61,16 @@ const POLICY = {
     currency: "INR",
     minimumLpa: 3,
     targetRangeLpa: [4, 6],
-      enforceWhenDisclosed: false,
+    enforceWhenDisclosed: false,
+  },
+  jobQuality: {
+    minDescriptionCharacters: 120,
+    urgentHiringPattern:
+      "\\burgent(?:ly)?\\s+hir(?:e|ing)\\b|\\bhiring\\s+immediately\\b|\\bimmediate\\s+joiner\\b|\\bjoin\\s+immediately\\b",
+    preferredStackPattern:
+      "\\breact(?:\\.js|js)?\\b|\\bnext(?:\\.js|js)?\\b|\\bjavascript\\b|\\btypescript\\b|\\bnode(?:\\.js|js)?\\b|\\bexpress(?:\\.js|js)?\\b|\\bmern\\b|\\bmongodb\\b|\\bpostgres(?:ql)?\\b|\\btailwind\\b|\\bprisma\\b|\\bdrizzle\\b|\\bredux\\b|\\bzustand\\b",
+    unrelatedStackPattern:
+      "\\bangular\\b|\\bvue(?:\\.js|js)?\\b|\\bsvelte\\b|\\bjava(?!script)\\b|\\bspring(?:\\s*boot)?\\b|\\bpython\\b|\\bdjango\\b|\\bflask\\b|\\bc#\\b|\\.net\\b|\\bphp\\b|\\blaravel\\b|\\bruby\\b|\\brails\\b|\\bgolang\\b|\\brust\\b|\\bflutter\\b|\\bswift\\b|\\bios\\b|\\bandroid\\b",
   },
   scoreThresholds: {
     wellfound: 55,
@@ -166,7 +175,131 @@ function checkLocation(text, policy = POLICY) {
   return { pass: false, reason: "NON_PRIORITY_ONSITE_LOCATION" };
 }
 
-const browserHelpers = { checkTitle, checkExperience, checkLocation };
+function checkJobQuality(job, policy = POLICY) {
+  const value = job || {};
+  const title = String(value.title || "");
+  const description = String(value.description || "");
+  const employmentType = String(value.employmentType || "");
+  const skills = String(value.skills || "");
+  const company = String(value.company || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  const companyBlocklist = (policy.companyBlocklist || []).map((name) =>
+    String(name).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(),
+  );
+
+  if (company && companyBlocklist.includes(company)) {
+    return {
+      pass: false,
+      reason: "COMPANY_BLOCKLIST",
+      warnings: [],
+      penalty: 0,
+    };
+  }
+
+  const titleOrTypePattern =
+    /\bintern(?:ship)?\b|\bpart[- ]time\b|\bfreelance(?:r)?\b|\btemporary\b|\bseasonal\b|\bcontract\b/i;
+  const descriptionEmploymentPattern =
+    /\bcontract[- ]to[- ]hire\b|\b(?:fixed[- ]term|contract)\s+(?:role|position|job|employment)\b|\b\d+\s*[- ]month(?:s)?\s+contract\b|\b(?:employment|job|role)\s+type\s*[:=-]\s*(?:contract|intern(?:ship)?|part[- ]time|temporary|freelance)\b|\binternship\s+(?:role|position|opportunity)\b/i;
+  if (
+    titleOrTypePattern.test(`${title}\n${employmentType}`) ||
+    descriptionEmploymentPattern.test(description)
+  ) {
+    return {
+      pass: false,
+      reason: "NON_FULL_TIME_ROLE",
+      warnings: [],
+      penalty: 0,
+    };
+  }
+
+  const quality = policy.jobQuality || POLICY.jobQuality;
+  const requirementPattern =
+    /\b(?:must|required|mandatory|proficient|expertise|strong experience|experience with|hands-on experience with|minimum qualifications)\b/i;
+  const preferredStackPattern = new RegExp(
+    quality.preferredStackPattern,
+    "i",
+  );
+  const unrelatedStackPattern = new RegExp(
+    quality.unrelatedStackPattern,
+    "i",
+  );
+  const requirementClauses = `${title}\n${skills}\n${description}`.split(
+    /[\n.;!?]+/,
+  );
+  const hasUnrelatedRequiredStack = requirementClauses.some(
+    (clause) =>
+      requirementPattern.test(clause) &&
+      unrelatedStackPattern.test(clause) &&
+      !preferredStackPattern.test(clause),
+  );
+  if (hasUnrelatedRequiredStack) {
+    return {
+      pass: false,
+      reason: "UNRELATED_REQUIRED_STACK",
+      warnings: [],
+      penalty: 0,
+    };
+  }
+
+  const warnings = [];
+  let penalty = 0;
+  if (!description.trim()) {
+    warnings.push("DESCRIPTION_UNAVAILABLE");
+  } else if (description.trim().length < quality.minDescriptionCharacters) {
+    warnings.push("DESCRIPTION_TOO_SHORT");
+    penalty = 5;
+  } else {
+    const paragraphs = description
+      .split(/\r?\n/)
+      .map((paragraph) => paragraph.toLowerCase().replace(/\s+/g, " ").trim())
+      .filter((paragraph) => paragraph.length >= 80);
+    const uniqueParagraphs = new Set(paragraphs);
+    if (
+      paragraphs.length >= 3 &&
+      uniqueParagraphs.size <= paragraphs.length / 2
+    ) {
+      warnings.push("REPETITIVE_DESCRIPTION");
+      penalty = 10;
+    }
+  }
+
+  if (new RegExp(quality.urgentHiringPattern, "i").test(description)) {
+    warnings.push("URGENT_HIRING_LANGUAGE");
+  }
+
+  return { pass: true, warnings, penalty };
+}
+
+function applyQualityAdjustment(
+  result,
+  qualityCheck,
+  scoreThreshold,
+  highScoreThreshold,
+) {
+  if (!qualityCheck.penalty) return result;
+
+  result.score = Math.max(0, result.score - qualityCheck.penalty);
+  result.breakdown +=
+    `, Job quality: -${qualityCheck.penalty} (${qualityCheck.warnings.join(", ")})`;
+  result.passed = result.score >= scoreThreshold;
+  result.action =
+    result.score >= highScoreThreshold
+      ? "HIGH_PRIORITY_APPLY"
+      : result.passed
+        ? "MODERATE_APPLY"
+        : "LOW_SCORE_SKIP";
+  return result;
+}
+
+const browserHelpers = {
+  checkTitle,
+  checkExperience,
+  checkLocation,
+  checkJobQuality,
+  applyQualityAdjustment,
+};
 
 function browserHelperSource() {
   return Object.entries(browserHelpers)
@@ -179,5 +312,7 @@ module.exports = {
   checkTitle,
   checkExperience,
   checkLocation,
+  checkJobQuality,
+  applyQualityAdjustment,
   browserHelperSource,
 };

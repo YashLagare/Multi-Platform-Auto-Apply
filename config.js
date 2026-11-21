@@ -30,6 +30,13 @@ function loadEnv(file) {
 const E = loadEnv(path.join(__dirname, ".env"));
 const g = (k, d = "") =>
   E[k] != null && E[k] !== "" ? E[k] : process.env[k] || d;
+const eligibilityPolicy = {
+  ...POLICY,
+  companyBlocklist: g("EXCLUDED_COMPANIES")
+    .split("||")
+    .map((company) => company.trim())
+    .filter(Boolean),
+};
 const noticePeriod = g("NOTICE_PERIOD");
 
 const profileHeadline = g(
@@ -149,6 +156,6 @@ module.exports = {
   openrouterKey,
   geminiKey,
   aiKey: openrouterKey || geminiKey,
-  eligibilityPolicy: POLICY,
+  eligibilityPolicy,
 };
 
