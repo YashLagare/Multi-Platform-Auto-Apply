@@ -59,7 +59,7 @@
     [/company name|current (company|employer)|organi[sz]ation/i, CV.company],
     [
       /years? of (work |professional )?experience|how (long|many years)/i,
-      `I have ${CV.yearsOfExperience}. Hands-on with ${CV.skills.split(",").slice(0, 8).join(",")} and more.`,
+      `${CV.experienceSummary} Hands-on with ${CV.skills.split(",").slice(0, 8).join(",")} and more.`,
     ],
     [
       /notice period|when can you (start|join)|start date|joining/i,
@@ -112,7 +112,7 @@
   ];
 
   const GENERIC_ANSWER =
-    `I'm ${CV.name}, ${CV.currentRole}. Happy to elaborate in an interview — key highlights: ` +
+    `${CV.profileHeadline}. ${CV.profileSummary} Key highlights: ` +
     CV.highlights.slice(0, 2).join("; ") +
     ".";
 
@@ -126,7 +126,9 @@ Dear ${company ? company + " team" : "Hiring Manager"},
 
 I would like to apply for the ${title || "Full Stack Developer"} position at ${company || "your company"}.
 
-I am currently a ${CV.currentRole || "Full Stack Developer"}, working daily with ${CV.skills.split(",").slice(0, 8).join(",").trim()}. A recent example of my work: ${CV.highlights[0] || "building scalable web applications end-to-end"}.
+${CV.profileSummary}
+
+My experience includes ${CV.skills.split(",").slice(0, 8).join(",").trim()}. A recent example: ${CV.highlights[0] || ""}.
 
 ${CV.highlights[1] || ""}${CV.highlights[2] ? " " + CV.highlights[2] + "." : ""}
 
@@ -457,7 +459,7 @@ ${CV.name}`;
     for (const [pattern, answer] of QA_BANK) {
       if (pattern.test(questionText)) return answer;
     }
-    const prompt = `You are answering a job application question on my behalf. Answer in first person, 2-4 sentences, professional, no markdown.\n\nMy CV:\n${JSON.stringify(CV)}\n\nQuestion: ${questionText}`;
+    const prompt = `You are answering a job application question on my behalf. Answer in first person, 2-4 sentences, professional, no markdown. Use only facts in the profile; if it does not contain the answer, say that you cannot determine it.\n\nMy professional profile:\n${JSON.stringify(CV.aiProfile)}\n\nQuestion: ${questionText}`;
     
     // 1. OpenRouter
     if (CONFIG.openrouterKey) {

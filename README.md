@@ -65,8 +65,12 @@ Built with **Node.js, Playwright Stealth, and Google Gemini AI**, it features an
 - **Unrelated Stacks:** `Java` (non-JS), `Spring Boot`, `.NET`, `C#`, `PHP`, `Ruby`, `Golang`, `Flutter`, `iOS`, `Android`.
 
 ### 3. Experience Limits
-- ✅ **Allowed:** `0–1 yrs`, `0–2 yrs`, `1–3 yrs`, `Entry Level`, `Associate`, `Junior`.
-- ❌ **Hard Rejected:** `4+ yrs`, `5+ yrs`, and senior ranges like `2–5 years`, `3–5 years`, `3–6 years`, `4–8 years`.
+- ✅ **Allowed:** Requirements up to **2 years**, `Entry Level`, `Associate`, and `Junior`.
+- ❌ **Hard Rejected:** Requirements above 2 years, including `1–3 years`, `2–5 years`, and `3+ years`.
+
+The application profile keeps numeric experience separate from its narrative summary. Set `EXPERIENCE_YEARS_NUMERIC` for numeric form fields and `EXPERIENCE_SUMMARY` for free-text questions. Leave salary, availability, and work-authorization fields blank unless their values are accurate; the automation does not invent fallback answers.
+
+The profile headline, summary, skills, education, and up to five evidence-based highlights feed generated pitches and screening answers. Review them in your ignored `.env` whenever your resume changes.
 
 ### 4. Search-Level Pre-Filtering (High Yield)
 Search URLs automatically include experience bounds to pre-filter job portal feeds before browser page load:

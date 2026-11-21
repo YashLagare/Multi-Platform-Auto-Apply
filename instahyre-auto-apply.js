@@ -58,19 +58,19 @@
   const QA_BANK = [
     [
       /notice period|when can you (start|join)|start date|availability|joining/i,
-      CV.noticePeriod || "Immediately available",
+      CV.noticePeriod,
     ],
     [
       /current .{0,15}(ctc|salary|compensation|package)/i,
-      CV.currentSalary || "3 LPA",
+      CV.currentSalary,
     ],
     [
       /(expected|desired) .{0,15}(ctc|salary|compensation|package|pay)/i,
-      CV.expectedSalary || "4.5 LPA",
+      CV.expectedSalary,
     ],
     [
       /years? of (work |professional )?experience|how many years/i,
-      "1 year professional experience + 9 full-stack projects",
+      CV.experienceSummary,
     ],
     [
       /react|frontend|front-end/i,
@@ -96,13 +96,13 @@
   ];
 
   const GENERIC_ANSWER =
-    `I am ${CV.name}, a ${CV.currentRole || "Full Stack Developer"}. Key highlights: ` +
+    `${CV.profileHeadline}. ${CV.profileSummary} Key highlights: ` +
     (CV.highlights.slice(0, 2).join("; ") ||
       "shipping production features end to end") +
     ".";
 
   function coverPitch(company, title) {
-    return `Hi ${company ? company + " team" : "Hiring Team"}, I'd love to contribute as a ${title || "Full Stack Developer"}. I work daily with React.js, Next.js, TypeScript, Node.js, and MongoDB. A recent highlight: ${CV.highlights[0] || "built production web applications end-to-end"}. Looking forward to discussing how I can deliver value to your team!`;
+    return `Hi ${company ? company + " team" : "Hiring Team"}, I'd love to contribute as a ${title || "Full Stack Developer"}. ${CV.profileSummary} A recent highlight: ${CV.highlights[0] || ""}.`;
   }
 
   // ======================= HELPERS =======================
@@ -351,7 +351,7 @@
     for (const [pattern, answer] of QA_BANK) {
       if (pattern.test(label)) return answer;
     }
-    const prompt = `You are answering an Instahyre job application question on my behalf. Answer in first person, 1-3 sentences, professional, no markdown.\n\nMy CV:\n${JSON.stringify(CV)}\n\nQuestion: ${label}`;
+    const prompt = `You are answering an Instahyre job application question on my behalf. Answer in first person, 1-3 sentences, professional, no markdown. Use only facts in the profile; if it does not contain the answer, say that you cannot determine it.\n\nMy professional profile:\n${JSON.stringify(CV.aiProfile)}\n\nQuestion: ${label}`;
 
     // 1. OpenRouter
     if (CONFIG.openrouterKey) {

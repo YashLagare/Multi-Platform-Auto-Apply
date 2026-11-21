@@ -57,25 +57,25 @@
   const QA_BANK = [
     [
       /notice period|when can you (start|join)|start date|availability|joining/i,
-      CV.noticePeriod || "Immediately available",
+      CV.noticePeriod,
     ],
     [
       /current .{0,15}(ctc|salary|compensation|package)/i,
-      CV.currentSalary || "3 LPA",
+      CV.currentSalary,
     ],
     [
       /(expected|desired) .{0,15}(ctc|salary|compensation|package|pay)/i,
-      CV.expectedSalary || "4.5 LPA",
+      CV.expectedSalary,
     ],
     [
       /years? of experience|total experience|experience with react/i,
-      String(CV.yearsOfExperience || "1"),
+      CV.experienceSummary,
     ],
     [/portfolio|website|github/i, CV.portfolio || CV.github || ""],
     [/linkedin/i, CV.linkedin || ""],
     [/phone|mobile|contact/i, CV.phone || ""],
     [/email/i, CV.email || ""],
-    [/city|current location|where are you based/i, CV.location || "Pune"],
+    [/city|current location|where are you based/i, CV.location],
     [/relocat/i, CV.relocate || "Yes, open to relocation."],
     [/remote/i, CV.remoteOk || "Yes, fully comfortable with remote/hybrid."],
   ];
@@ -374,7 +374,7 @@
           ""
         ).toLowerCase();
         if (/experience|years/i.test(label)) {
-          setValue(inp, String(CV.yearsOfExperience || "1"));
+          setValue(inp, String(CV.experienceYears));
         } else if (/notice|join|start/i.test(label)) {
           setValue(inp, "0");
         } else if (/salary|ctc|comp/i.test(label)) {

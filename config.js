@@ -30,6 +30,27 @@ function loadEnv(file) {
 const E = loadEnv(path.join(__dirname, ".env"));
 const g = (k, d = "") =>
   E[k] != null && E[k] !== "" ? E[k] : process.env[k] || d;
+const noticePeriod = g("NOTICE_PERIOD");
+
+const profileHeadline = g(
+  "PROFILE_HEADLINE",
+  "Frontend-focused Full Stack Developer | React.js, Next.js, TypeScript, Node.js",
+);
+const profileSummary = g(
+  "PROFILE_SUMMARY",
+  "Frontend-focused Full Stack Developer with about 11 months of professional internship experience delivering 15+ client-facing applications. Strong in React, Next.js, TypeScript, Tailwind CSS, REST API integration, and frontend performance, with hands-on full-stack SaaS projects using Node.js, Express, MongoDB, PostgreSQL, authentication, AI integrations, and payments.",
+);
+const defaultHighlights = [
+  "Delivered responsive production React and Next.js applications across 15+ client-facing projects during an 11-month internship.",
+  "Built reusable React and Next.js component libraries and integrated REST APIs across 30+ data workflows.",
+  "Built FlowForge, a workflow automation SaaS with a React Flow editor, durable Trigger.dev execution, Liveblocks collaboration, Clerk organizations, and PostgreSQL.",
+  "Built Docsy, a multi-tenant AI document workspace with streamed answers and source references, Stripe billing, Better Auth, and PostgreSQL.",
+  "Built QuickBite, a multi-role ordering platform with Socket.IO order tracking, Razorpay payments, and MongoDB geospatial discovery.",
+];
+const configuredHighlights = g("HIGHLIGHTS")
+  .split("||")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 if (!g("NAME") || !g("EMAIL")) {
   console.warn(
@@ -42,18 +63,36 @@ const CV = {
   email: g("EMAIL"),
   phone: g("PHONE"),
   location: g("LOCATION"),
-  currentRole: g("CURRENT_ROLE"),
+  profileHeadline,
+  profileSummary,
+  currentRole: g("CURRENT_ROLE", profileHeadline),
   company:
     g("COMPANY") || (g("CURRENT_ROLE").split(" at ")[1] || "").split(" (")[0],
   education: g("EDUCATION"),
-  yearsOfExperience: g("YEARS_EXPERIENCE"),
-  skills: g("SKILLS"),
-  highlights: g("HIGHLIGHTS")
-    .split("||")
-    .map((s) => s.trim())
-    .filter(Boolean),
+  experienceYears: g("EXPERIENCE_YEARS_NUMERIC", "1"),
+  experienceSummary: g(
+    "EXPERIENCE_SUMMARY",
+    g(
+      "YEARS_EXPERIENCE",
+      "About 11 months of professional internship experience, plus hands-on full-stack SaaS project work.",
+    ),
+  ),
+  yearsOfExperience: g(
+    "EXPERIENCE_SUMMARY",
+    g(
+      "YEARS_EXPERIENCE",
+      "About 11 months of professional internship experience, plus hands-on full-stack SaaS project work.",
+    ),
+  ),
+  skills: g(
+    "SKILLS",
+    "React.js, Next.js, JavaScript, TypeScript, Tailwind CSS, Node.js, Express.js, REST APIs, MongoDB, PostgreSQL, Prisma, Drizzle ORM, Clerk, Better Auth, Redux Toolkit, Zustand, OpenAI API, Google Gemini API, Git, GitHub",
+  ),
+  highlights: configuredHighlights.length
+    ? configuredHighlights
+    : defaultHighlights,
   // application answers
-  noticePeriod: g("NOTICE_PERIOD"),
+  noticePeriod,
   currentCTC: g("CURRENT_CTC")
     .replace(/\s*lpa$/i, "")
     .trim(), // bare number for chatbots, e.g. "3"
@@ -76,7 +115,7 @@ const CV = {
     : "",
   dob: g("DOB"),
   gender: g("GENDER"),
-  workAuth: g("WORK_AUTH", "Authorized to work in my country of residence."),
+  workAuth: g("WORK_AUTH"),
   // links
   github: g("GITHUB_URL"),
   linkedin: g("LINKEDIN_URL"),
@@ -86,9 +125,20 @@ const CV = {
   remoteOk:
     "Yes, I am fully set up for remote work and also open to hybrid/onsite.",
   relocate: `Yes, I am open to relocation. I am currently based in ${g("LOCATION")}.`,
-  startDate: g("NOTICE_PERIOD").toLowerCase().startsWith("immediat")
-    ? "I am available to join immediately."
-    : `I can start within ${g("NOTICE_PERIOD")}.`,
+  startDate: noticePeriod
+    ? noticePeriod.toLowerCase().startsWith("immediat")
+      ? "I am available to join immediately."
+      : `I can start within ${noticePeriod}.`
+    : "",
+};
+
+CV.aiProfile = {
+  headline: CV.profileHeadline,
+  summary: CV.profileSummary,
+  experience: CV.experienceSummary,
+  skills: CV.skills,
+  education: CV.education,
+  highlights: CV.highlights,
 };
 
 const openrouterKey = g("OPENROUTER_KEY");

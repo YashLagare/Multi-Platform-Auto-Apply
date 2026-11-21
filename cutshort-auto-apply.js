@@ -58,32 +58,31 @@
   const QA_BANK = [
     [
       /notice period|when can you (start|join)|start date|availability|joining/i,
-      CV.noticePeriod || "Immediately available",
+      CV.noticePeriod,
     ],
     [
       /current .{0,15}(ctc|salary|compensation|package)/i,
-      CV.currentSalary || "3 LPA",
+      CV.currentSalary,
     ],
     [
       /(expected|desired) .{0,15}(ctc|salary|compensation|package|pay)/i,
-      CV.expectedSalary || "4.5 LPA",
+      CV.expectedSalary,
     ],
     [
       /years? of experience|total experience|experience with react/i,
-      String(CV.yearsOfExperience || "1"),
+      CV.experienceSummary,
     ],
     [/portfolio|website|github/i, CV.portfolio || CV.github || ""],
     [/linkedin/i, CV.linkedin || ""],
     [/phone|mobile|contact/i, CV.phone || ""],
     [/email/i, CV.email || ""],
-    [/city|current location|where are you based/i, CV.location || "Pune"],
+    [/city|current location|where are you based/i, CV.location],
     [/relocat/i, CV.relocate || "Yes, open to relocation."],
     [/remote/i, CV.remoteOk || "Yes, fully comfortable with remote/hybrid."],
   ];
 
   const GENERIC_PITCH =
-    `Hi! I am ${CV.name}, a ${CV.currentRole || "Full Stack Developer"} specializing in React, Next.js, and modern TypeScript. ` +
-    `I build fast, responsive user interfaces and robust web applications. I would love to contribute to your engineering team!`;
+    `Hi! ${CV.profileSummary} My recent work includes ${CV.highlights.slice(2, 4).join(" ")}. I would love to contribute to your engineering team.`;
 
   // ======================= HELPERS =======================
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -338,7 +337,7 @@
   async function generatePitchNote(job) {
     const prompt =
       `You are writing a personalized, compelling 2-3 sentence application note to a startup founder/recruiter on Cutshort on my behalf.\n` +
-      `Candidate Info:\n${JSON.stringify(CV)}\n\n` +
+      `Candidate Professional Profile:\n${JSON.stringify(CV.aiProfile)}\n\n` +
       `Job Info:\nRole: ${job.title}\nCompany: ${job.company}\nDescription/Skills: ${job.skills || job.description || ""}\n\n` +
       `Rules:\n1. First person ("I am...", "I've built...").\n2. Concise, crisp, professional, enthusiasm for the specific role.\n3. Mention key relevant tech stack (React/Next.js/TypeScript).\n4. No placeholders, no emojis, no bullet points.`;
 
@@ -430,9 +429,9 @@
       } else if (/expected.*(?:ctc|salary|comp)/i.test(label)) {
         setValue(inp, CV.expectedCTC || "4.5");
       } else if (/notice|join|start/i.test(label)) {
-        setValue(inp, CV.noticePeriod || "0");
+        setValue(inp, CV.noticePeriod);
       } else if (/experience/i.test(label)) {
-        setValue(inp, String(CV.yearsOfExperience || "1"));
+        setValue(inp, String(CV.experienceYears));
       } else if (/portfolio|github|link/i.test(label)) {
         setValue(inp, CV.portfolio || CV.github || "");
       }

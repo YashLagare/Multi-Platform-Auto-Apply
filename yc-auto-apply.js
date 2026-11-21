@@ -55,9 +55,7 @@
   };
 
   const DEFAULT_YC_PITCH =
-    `Hi! I'm ${CV.name}, a ${CV.currentRole || "Full Stack Developer"} passionate about high-growth startups. ` +
-    `I specialize in React, Next.js, and TypeScript, and love building fast, reliable, user-centric web products. ` +
-    `I'm ready to dive in and make an immediate engineering impact at your company!`;
+    `Hi! ${CV.profileSummary} My project experience includes ${CV.highlights.slice(2, 5).join(" ")}. I would welcome the opportunity to contribute to your engineering team.`;
 
   // ======================= HELPERS =======================
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -312,7 +310,7 @@
   async function generateYCPitch(job) {
     const prompt =
       `You are writing a personalized pitch note to a Y Combinator startup founder/engineering lead on my behalf.\n` +
-      `Candidate Info:\n${JSON.stringify(CV)}\n\n` +
+      `Candidate Professional Profile:\n${JSON.stringify(CV.aiProfile)}\n\n` +
       `Job Info:\nRole: ${job.title}\nCompany: ${job.company}\nDescription/Skills: ${job.skills || job.description || ""}\n\n` +
       `Rules:\n1. 2-3 sentences max. Direct, energetic, startup-minded.\n2. State why I am a great fit for building their React/TypeScript frontend/fullstack product.\n3. Mention eagerness to move fast and deliver value.\n4. No placeholders, no bullet points.`;
 
