@@ -17,66 +17,13 @@
     MAX_APPLICATIONS: 50,
     MIN_DELAY_MS: 60000,
     MAX_DELAY_MS: 150000,
-    SCORE_THRESHOLD: 55, // Minimum score to proceed with application
-    HIGH_SCORE_THRESHOLD: 75,
+    SCORE_THRESHOLD: __CFG.eligibilityPolicy.scoreThresholds[__CFG.platform], // Minimum score to proceed with application
+    HIGH_SCORE_THRESHOLD: __CFG.eligibilityPolicy.highScoreThreshold,
     openrouterKey: __CFG.openrouterKey || "",
     geminiKey: __CFG.geminiKey || "",
   };
 
   // ======================= LAYER 1: HARD EXCLUSIONS & TARGETS =======================
-  const TITLE_HARD_EXCLUSIONS = [
-    // Co-founder & Executive / Leadership
-    /\b(?:technical\s+)?co-?founder\b/i,
-    /\bcto\b|\bchief\s+technology\s+officer\b/i,
-    /\bfounder\b/i,
-    /\bhead\s+of\b/i,
-    /\bdirector\b/i,
-    /\bvp\b|\bvice\s+president\b/i,
-    /\b(?:engineering|product|project|tech|general|program)\s+manager\b/i,
-
-    // Seniority Hard Exclusions
-    /\bsenior\b|\bsr\.?\b/i,
-    /\blead\b/i,
-    /\bprincipal\b/i,
-    /\bstaff\b/i,
-    /\barchitect\b/i,
-
-    // Non-Engineering / Non-Target Roles
-    /\bintern\b|\binternship\b/i,
-    /\bdesigner\b|\bui\s*\/\s*ux\b/i,
-    /\bproduct\s+manager\b/i,
-    /\bqa\b|\btester\b|\btest\s+engineer\b|\bquality\s+assurance\b/i,
-    /\bdevops\b|\bsre\b|\binfrastructure\b/i,
-    /\bdata\s+engineer\b|\bdata\s+scientist\b|\bdata\s+analyst\b/i,
-    /\bsales\b|\bmarketing\b|\bbdr\b|\bsdr\b/i,
-    /\btutor\b|\bteacher\b|\btrainer\b|\binstructor\b|\bcoach\b/i,
-
-    // Unrelated Tech Stacks in Title
-    /\bjava\b(?!\s*script)/i,
-    /\bspring(?:\s*boot)?\b/i,
-    /\b\.net\b|\bc#\b/i,
-    /\bphp\b|\blaravel\b/i,
-    /\bruby(?:\s*on\s*rails)?\b|\brails\b/i,
-    /\bgolang\b|\bgo\s+developer\b/i,
-    /\brust\b/i,
-    /\bflutter\b/i,
-    /\bswift\b|\bios\b/i,
-    /\bandroid(?:\s+native)?\b/i,
-    /\bsalesforce\b|\bsap\b/i,
-    /\bc\+\+\b/i,
-  ];
-
-  const TARGET_ROLE_PATTERNS = [
-    /\breact(?:\.js|js)?\b/i,
-    /\bnext(?:\.js|js)?\b/i,
-    /\bfrontend\b|\bfront-end\b|\bfront\s+end\b/i,
-    /\bjavascript\b|\bjs\s+developer\b|\btypescript\b|\bts\s+developer\b/i,
-    /\bmern(?:\s+stack)?\b/i,
-    /\bfull\s*stack\b|\bfullstack\b/i,
-    /\bsoftware\s+engineer\b|\bsoftware\s+developer\b|\bsde\b/i,
-    /\bweb\s+developer\b/i,
-    /\bmember\s+of\s+technical\s+staff\b/i,
-  ];
 
   // ======================= CV DATA =======================
   const CV = __CFG.CV || {
@@ -292,89 +239,25 @@ ${CV.name}`;
 
   // ======================= LAYER 1: HARD FILTER FUNCTIONS =======================
   function checkTitleHardExclusions(title) {
-    for (const regex of TITLE_HARD_EXCLUSIONS) {
-      if (regex.test(title)) {
-        return {
-          pass: false,
-          reason: `HARD_TITLE_EXCLUSION (${regex.source})`,
-        };
-      }
-    }
-    const isTarget = TARGET_ROLE_PATTERNS.some((r) => r.test(title));
-    if (!isTarget) {
-      return { pass: false, reason: "NOT_A_TARGET_ROLE" };
-    }
-    return { pass: true };
+    return window.__APPLY_POLICY_HELPERS.checkTitle(
+      title,
+      __CFG.eligibilityPolicy,
+    );
   }
 
   function checkExperienceExclusion(jdText) {
-    const t = jdText.toLowerCase();
-
-    // Check high experience ranges (e.g. 2-5 yrs, 3-5 yrs, 4-6 yrs, 5-8 yrs)
-    const rangeMatch = t.match(
-      /\b(?:2\s*[-–to]\s*5|3\s*[-–to]\s*5|3\s*[-–to]\s*6|4\s*[-–to]\s*[678]|5\s*[-–to]\s*[89]|5\s*[-–to]\s*10)\s*(?:years?|yrs?)\b/i,
+    return window.__APPLY_POLICY_HELPERS.checkExperience(
+      jdText,
+      __CFG.eligibilityPolicy,
     );
-    if (rangeMatch) {
-      return {
-        pass: false,
-        reason: `EXPERIENCE_EXCEEDS_LIMIT (${rangeMatch[0]})`,
-      };
-    }
-
-    // Check fixed 4+, 5+, 6+ years
-    const plusMatch = t.match(
-      /\b(?:[4-9]|1\d)\+?\s*(?:years?|yrs?)(?:\s+of\s+experience|\s+experience)?\b/i,
-    );
-    if (plusMatch && !/\b(?:0-2|0-3|1-3|1-2)\b/.test(plusMatch[0])) {
-      const num = parseInt(plusMatch[0], 10);
-      if (num >= 4) {
-        return {
-          pass: false,
-          reason: `EXPERIENCE_EXCEEDS_LIMIT (${plusMatch[0]})`,
-        };
-      }
-    }
-
-    // Check minimum 4/5 years
-    const minMatch = t.match(
-      /\b(?:min(?:imum)?|at\s*least)\s*of?\s*([4-9]|1\d)\s*(?:years?|yrs?)\b/i,
-    );
-    if (minMatch) {
-      return {
-        pass: false,
-        reason: `EXPERIENCE_EXCEEDS_LIMIT (${minMatch[0]})`,
-      };
-    }
-
-    return { pass: true };
   }
 
   function checkLocationFit(cardLoc, jdText) {
-    const combined = ((cardLoc || "") + " " + (jdText || "")).toLowerCase();
-    const isRemote =
-      /\bremote\b|\bwork\s*from\s*home\b|\bwfh\b|\banywhere\b/i.test(combined);
-
-    // Foreign residency locks (e.g. US/UK/EU citizens only)
-    if (
-      /\b(?:must\s+reside\s+in\s+the\s+u\.?s\.?|us\s+citizens\s+only|us\s+only|uk\s+only|eu\s+only|north\s+america\s+only)\b/i.test(
-        combined,
-      )
-    ) {
-      return { pass: false, reason: "FOREIGN_LOCATION_RESTRICTION" };
-    }
-
-    const p1 = /\bbengaluru\b|\bbangalore\b|\bpune\b|\bhyderabad\b/i.test(
-      combined,
+    const text = [cardLoc, jdText].filter(Boolean).join(" ");
+    return window.__APPLY_POLICY_HELPERS.checkLocation(
+      text,
+      __CFG.eligibilityPolicy,
     );
-    const p2 =
-      /\bmumbai\b|\bchennai\b|\bgurgaon\b|\bgurugram\b|\bnoida\b|\bdelhi\b/i.test(
-        combined,
-      );
-    const p3 = /\bahmedabad\b/i.test(combined);
-
-    if (p1 || p2 || p3 || isRemote) return { pass: true };
-
-    return { pass: false, reason: "NON_PRIORITY_ONSITE_LOCATION" };
   }
 
   function checkFullStackRelevance(title, jdText) {
@@ -461,12 +344,12 @@ ${CV.name}`;
 
     // 3. Experience Fit (Max 20 pts)
     if (
-      /\b(?:0-1|0-2|0-3|1-2|1-3|fresh|fresher|entry\s*level|associate|junior)\b/.test(
+      /\b(?:0-1|0-2|1-2|fresh|fresher|entry\s*level|associate|junior)\b/.test(
         lowerJD,
       )
     ) {
       score += 20;
-      breakdown.push("Exp: 0-3 yrs / Entry / Associate (+20)");
+      breakdown.push("Exp: 0-2 yrs / Entry / Associate (+20)");
     } else if (!/\b\d+\+?\s*(?:years?|yrs?)\b/.test(lowerJD)) {
       score += 15;
       breakdown.push("Exp: Unspecified (+15)");

@@ -2,6 +2,7 @@
  * Unit Test Suite for Cutshort Two-Layer Decision Pipeline
  */
 const assert = require("assert");
+const { POLICY, checkExperience: checkPolicyExperience } = require("./eligibility-policy");
 
 const TITLE_HARD_EXCLUSIONS = [
   /\b(?:technical\s+)?co-?founder\b/i,
@@ -59,29 +60,10 @@ function checkTitle(title) {
 }
 
 function checkExperience(expText) {
-  const t = (expText || "").toLowerCase();
-  const rangeMatch = t.match(
-    /\b(?:2\s*[-–to]\s*5|3\s*[-–to]\s*5|3\s*[-–to]\s*6|4\s*[-–to]\s*[678]|5\s*[-–to]\s*[89]|5\s*[-–to]\s*10)\s*(?:years?|yrs?)\b/i,
-  );
-  if (rangeMatch)
-    return {
-      pass: false,
-      reason: `EXPERIENCE_EXCEEDS_LIMIT (${rangeMatch[0]})`,
-    };
-
-  const numMatch = t.match(
-    /\b([3-9]|1\d)\s*(?:\+|-\s*\d+)?\s*(?:years?|yrs?)\b/i,
-  );
-  if (numMatch) {
-    const minNum = parseInt(numMatch[1], 10);
-    if (minNum >= 4)
-      return {
-        pass: false,
-        reason: `EXPERIENCE_EXCEEDS_LIMIT (${numMatch[0]})`,
-      };
-  }
-  return { pass: true };
+  return checkPolicyExperience(expText, POLICY);
 }
+
+
 
 function checkLocation(locText) {
   const t = (locText || "").toLowerCase();
@@ -195,12 +177,12 @@ function evaluateCutshortJob(job, appliedHistory = {}) {
 
   // Exp
   if (
-    /\b(?:0\s*-\s*2|1\s*-\s*3|0\s*-\s*1|0\s*-\s*3|0-1|0-2|0-3|1-3)\s*yrs?\b/i.test(
+    /\b(?:0\s*-\s*2|1\s*-\s*2|0\s*-\s*1|0-1|0-2|1-2)\s*yrs?\b/i.test(
       job.experience,
     )
   ) {
     score += 20;
-    breakdown.push("Exp: 0-3 yrs (+20)");
+    breakdown.push("Exp: 0-2 yrs (+20)");
   } else {
     score += 10;
     breakdown.push("Exp: 2-3 yrs (+10)");
@@ -289,9 +271,9 @@ assert.strictEqual(
   "Should pass 0-2 yrs",
 );
 assert.strictEqual(
-  checkExperience("1 - 3 years").pass,
+  checkExperience("1-2 years").pass,
   true,
-  "Should pass 1-3 yrs",
+  "Should pass 1-2 yrs",
 );
 console.log("  ✓ Experience Limits passed");
 
@@ -318,7 +300,7 @@ const highMatch = evaluateCutshortJob({
   id: "cs-101",
   title: "React.js Developer",
   company: "Fintech Startup",
-  experience: "1-3 yrs",
+  experience: "1-2 yrs",
   location: "Pune",
   skills: "React, Next.js, TypeScript, Tailwind CSS, REST APIs",
   description: "Building modern scalable client web apps",

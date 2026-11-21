@@ -2,6 +2,7 @@
  * Unit Test Suite for Instahyre Two-Layer Decision Pipeline
  */
 const assert = require("assert");
+const { POLICY, checkExperience: checkPolicyExperience } = require("./eligibility-policy");
 
 const TITLE_HARD_EXCLUSIONS = [
   /\b(?:technical\s+)?co-?founder\b/i,
@@ -59,29 +60,10 @@ function checkTitle(title) {
 }
 
 function checkExperience(expText) {
-  const t = (expText || "").toLowerCase();
-  const rangeMatch = t.match(
-    /\b(?:2\s*[-–to]\s*5|3\s*[-–to]\s*5|3\s*[-–to]\s*6|4\s*[-–to]\s*[678]|5\s*[-–to]\s*[89]|5\s*[-–to]\s*10)\s*(?:years?|yrs?)\b/i,
-  );
-  if (rangeMatch)
-    return {
-      pass: false,
-      reason: `EXPERIENCE_EXCEEDS_LIMIT (${rangeMatch[0]})`,
-    };
-
-  const numMatch = t.match(
-    /\b([3-9]|1\d)\s*(?:\+|-\s*\d+)?\s*(?:years?|yrs?)\b/i,
-  );
-  if (numMatch) {
-    const minNum = parseInt(numMatch[1], 10);
-    if (minNum >= 4)
-      return {
-        pass: false,
-        reason: `EXPERIENCE_EXCEEDS_LIMIT (${numMatch[0]})`,
-      };
-  }
-  return { pass: true };
+  return checkPolicyExperience(expText, POLICY);
 }
+
+
 
 function checkLocation(locText) {
   const t = (locText || "").toLowerCase();
@@ -182,12 +164,12 @@ function evaluateInstahyreJob(job, appliedHistory = {}) {
 
   // Exp
   if (
-    /\b(?:0\s*-\s*2|1\s*-\s*3|0\s*-\s*1|0\s*-\s*3)\s*yrs\b/.test(
+    /\b(?:0\s*-\s*2|1\s*-\s*2|0\s*-\s*1)\s*yrs\b/.test(
       job.experience.toLowerCase(),
     )
   ) {
     score += 20;
-    breakdown.push("Exp: 0-3 yrs (+20)");
+    breakdown.push("Exp: 0-2 yrs (+20)");
   } else {
     score += 10;
     breakdown.push("Exp: 2-3 yrs (+10)");
@@ -232,7 +214,7 @@ const tests = [
     job: {
       id: "ih-201",
       title: "Technical Co-Founder",
-      experience: "1 - 3 yrs",
+      experience: "1-2 yrs",
       location: "Remote",
       skills: "React, Node.js",
     },
@@ -256,7 +238,7 @@ const tests = [
     job: {
       id: "ih-203",
       title: "Full Stack Developer",
-      experience: "1 - 3 yrs",
+      experience: "1-2 yrs",
       location: "Jaipur",
       skills: "React, Node.js",
     },
@@ -268,7 +250,7 @@ const tests = [
     job: {
       id: "ih-204",
       title: "Full Stack Developer",
-      experience: "1 - 3 yrs",
+      experience: "1-2 yrs",
       location: "Bengaluru",
       skills: "Java, Spring Boot, Hibernate, MySQL",
     },
@@ -280,7 +262,7 @@ const tests = [
     job: {
       id: "ih-101",
       title: "React Developer",
-      experience: "1 - 3 yrs",
+      experience: "1-2 yrs",
       location: "Bengaluru",
       skills: "React.js, Next.js",
     },
@@ -288,11 +270,11 @@ const tests = [
     expectedReasonPrefix: "ALREADY_APPLIED",
   },
   {
-    name: "6. Positive: React Developer @ Bengaluru (1 - 3 yrs, React, Next, TS, Tailwind)",
+    name: "6. Positive: React Developer @ Bengaluru (1-2 yrs, React, Next, TS, Tailwind)",
     job: {
       id: "ih-301",
       title: "React Developer",
-      experience: "1 - 3 yrs",
+      experience: "1-2 yrs",
       location: "Bengaluru",
       skills: "React.js, Next.js, TypeScript, Tailwind CSS, REST APIs",
     },

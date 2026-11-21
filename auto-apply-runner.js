@@ -25,7 +25,14 @@
  */
 const path = require("path");
 const fs = require("fs");
-const { CV, openrouterKey, geminiKey, aiKey } = require("./config");
+const {
+  CV,
+  openrouterKey,
+  geminiKey,
+  aiKey,
+  eligibilityPolicy,
+} = require("./config");
+const { browserHelperSource } = require("./eligibility-policy");
 const {
   buildAdvancedSearches,
   rotateSearches,
@@ -411,7 +418,8 @@ function buildInjection() {
 
   return `(async () => {
     if (window.__aaBusy) return; window.__aaBusy = true;
-    window.__APPLY_CONFIG = ${JSON.stringify({ CV, openrouterKey, geminiKey, aiKey, appliedJobIds: appliedDb.appliedIds })};
+    window.__APPLY_CONFIG = ${JSON.stringify({ CV, openrouterKey, geminiKey, aiKey, appliedJobIds: appliedDb.appliedIds, eligibilityPolicy, platform: SITE_ARG })};
+    window.__APPLY_POLICY_HELPERS = {${browserHelperSource()}};
     try { await ${raw}
     } finally { window.__aaBusy = false; }
   })()`;

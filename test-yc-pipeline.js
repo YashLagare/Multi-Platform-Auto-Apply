@@ -139,7 +139,7 @@ function evaluateYCJob(job, appliedHistory = {}) {
   score += Math.min(35, tech);
 
   // Exp & Loc
-  score += 20; // 0-3 yrs startup baseline
+  score += 20; // 0-2 yrs startup baseline
   score += 10; // Remote / Global
   score += 10; // YC freshness
 

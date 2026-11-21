@@ -10,7 +10,16 @@ const searches = ["first", "second", "third"];
 const indeedSearches = buildAdvancedSearches("indeed");
 assert(indeedSearches.some((url) => url.includes("l=Bengaluru")));
 assert(indeedSearches.some((url) => url.includes("l=Remote")));
+assert(indeedSearches.some((url) => url.includes("l=Ahmedabad")));
 assert(indeedSearches.every((url) => url.includes("sort=date&fromage=7")));
+
+const founditSearches = buildAdvancedSearches("foundit");
+assert(founditSearches.every((url) => url.includes("experienceRanges=0~2")));
+assert(founditSearches.some((url) => url.includes("location=Ahmedabad")));
+
+const naukriSearches = buildAdvancedSearches("naukri");
+assert(naukriSearches.every((url) => !url.includes("experience=3")));
+assert(naukriSearches.every((url) => url.includes("experience=2")));
 
 const linkedInSearches = buildAdvancedSearches("linkedin");
 assert(linkedInSearches.every((url) => url.includes("f_TPR=r604800")));

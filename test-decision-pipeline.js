@@ -2,6 +2,7 @@
  * Standalone Unit / Diagnostic Test for the Two-Layer Decision Pipeline
  */
 const assert = require("assert");
+const { POLICY, checkExperience: checkPolicyExperience } = require("./eligibility-policy");
 
 // 1. Layer 1 Title Exclusions
 const TITLE_HARD_EXCLUSIONS = [
@@ -64,40 +65,10 @@ function checkTitle(title) {
 }
 
 function checkExperienceExclusion(jdText) {
-  const t = jdText.toLowerCase();
-
-  // Check senior ranges: 2-5, 3-5, 4-6, 5-8, etc.
-  const rangeMatch = t.match(
-    /\b(?:2\s*[-–to]\s*5|3\s*[-–to]\s*5|3\s*[-–to]\s*6|4\s*[-–to]\s*[678]|5\s*[-–to]\s*[89]|5\s*[-–to]\s*10)\s*(?:years?|yrs?)\b/i,
-  );
-  if (rangeMatch)
-    return {
-      pass: false,
-      reason: `EXPERIENCE_EXCEEDS_LIMIT (${rangeMatch[0]})`,
-    };
-
-  // Check 4+, 5+, 6+ years
-  const plusMatch = t.match(
-    /\b(?:[4-9]|1\d)\+?\s*(?:years?|yrs?)(?:\s+of\s+experience|\s+experience)?\b/i,
-  );
-  if (plusMatch && !/\b(?:0-2|0-3|1-3|1-2)\b/.test(plusMatch[0])) {
-    const num = parseInt(plusMatch[0], 10);
-    if (num >= 4)
-      return {
-        pass: false,
-        reason: `EXPERIENCE_EXCEEDS_LIMIT (${plusMatch[0]})`,
-      };
-  }
-
-  // Check minimum 4/5 years
-  const minMatch = t.match(
-    /\b(?:min(?:imum)?|at\s*least)\s*of?\s*([4-9]|1\d)\s*(?:years?|yrs?)\b/i,
-  );
-  if (minMatch)
-    return { pass: false, reason: `EXPERIENCE_EXCEEDS_LIMIT (${minMatch[0]})` };
-
-  return { pass: true };
+  return checkPolicyExperience(jdText, POLICY);
 }
+
+
 
 function checkLocationFit(cardLoc, jdText) {
   const combined = ((cardLoc || "") + " " + (jdText || "")).toLowerCase();
@@ -247,12 +218,12 @@ function evaluateJob(job, appliedIds = {}) {
 
   // Exp
   if (
-    /\b(?:0-1|0-2|0-3|1-2|1-3|fresh|fresher|entry\s*level|associate|junior)\b/.test(
+    /\b(?:0-1|0-2|1-2|fresh|fresher|entry\s*level|associate|junior)\b/.test(
       lowerJD,
     )
   ) {
     score += 20;
-    breakdown.push("Exp: 0-3 yrs / Entry / Associate (+20)");
+    breakdown.push("Exp: 0-2 yrs / Entry / Associate (+20)");
   } else if (!/\b\d+\+?\s*(?:years?|yrs?)\b/.test(lowerJD)) {
     score += 15;
     breakdown.push("Exp: Unspecified (+15)");
@@ -326,7 +297,7 @@ const testCases = [
       id: "9999001",
       title: "Full Stack Developer",
       location: "Jaipur, Rajasthan",
-      jd: "Looking for Full Stack Developer in Jaipur office. Must work on-site in Jaipur. React, Node.js, 1-3 years experience.",
+      jd: "Looking for Full Stack Developer in Jaipur office. Must work on-site in Jaipur. React, Node.js, 1-2 years experience.",
     },
     expectedPass: false,
     expectedReasonPrefix: "NON_PRIORITY_ONSITE_LOCATION",
@@ -359,7 +330,7 @@ const testCases = [
       id: "9999003b",
       title: "Java Full Stack Developer",
       location: "Bengaluru",
-      jd: "Looking for Full Stack Engineer with React, Node.js, 1-3 years experience.",
+      jd: "Looking for Full Stack Engineer with React, Node.js, 1-2 years experience.",
     },
     expectedPass: false,
     expectedReasonPrefix: "HARD_TITLE_EXCLUSION",
@@ -370,7 +341,7 @@ const testCases = [
       id: "3721620",
       title: "Full Stack Developer",
       location: "Bengaluru",
-      jd: "Full Stack Developer with React, Node.js, 1-3 years experience.",
+      jd: "Full Stack Developer with React, Node.js, 1-2 years experience.",
     },
     expectedPass: false,
     expectedReasonPrefix: "ALREADY_APPLIED",

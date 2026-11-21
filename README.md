@@ -79,6 +79,8 @@ The runner now expands the query matrix across multiple job-title variants and I
 
 Search URLs rotate across runs from a saved per-platform cursor instead of restarting at the first query. Indeed and LinkedIn searches request recent listings (last 7 days) and sort by date where supported. The runner records visits, unique evaluated/eligible jobs, and confirmed live applications per search in `search-performance-<platform>.json`; `npm run stats` shows the highest-yield searches. Dry runs count eligible jobs but never count submissions as confirmed applications.
 
+The shared eligibility policy in `eligibility-policy.js` is the source of truth for target role titles, excluded titles/stacks, a 0–2 year experience limit, location priorities, search terms, and per-platform score thresholds. Salary preference is ₹3 LPA minimum (target ₹4–6 LPA); salary is informational only for now because platforms expose it inconsistently, so no listing is auto-rejected based on salary.
+
 ### 5. Location Hierarchy
 - **Priority 1:** Bengaluru, Pune, Hyderabad *(Remote, Hybrid, On-site)*
 - **Priority 2:** Remote (India/Global), Mumbai, Chennai, Gurgaon / Gurugram, Noida / Delhi NCR *(Remote, Hybrid, On-site)*

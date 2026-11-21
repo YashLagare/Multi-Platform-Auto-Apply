@@ -4,6 +4,7 @@
  */
 const fs = require("fs");
 const path = require("path");
+const { POLICY } = require("./eligibility-policy");
 
 function loadEnv(file) {
   const out = {};
@@ -93,5 +94,11 @@ const CV = {
 const openrouterKey = g("OPENROUTER_KEY");
 const geminiKey = g("GEMINI_KEY");
 
-module.exports = { CV, openrouterKey, geminiKey, aiKey: openrouterKey || geminiKey };
+module.exports = {
+  CV,
+  openrouterKey,
+  geminiKey,
+  aiKey: openrouterKey || geminiKey,
+  eligibilityPolicy: POLICY,
+};
 

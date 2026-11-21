@@ -138,7 +138,7 @@ function evaluateLinkedInJob(job, appliedHistory = {}) {
   }
   score += Math.min(35, tech);
 
-  score += 20; // 0-3 yrs
+  score += 20; // 0-2 yrs
   score += 10; // P1 / Remote
   score += 10; // LinkedIn Easy Apply
 

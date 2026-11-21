@@ -1,128 +1,35 @@
-const ROLE_VARIANTS = [
-  "react developer",
-  "react js developer",
-  "frontend engineer",
-  "frontend developer",
-  "full stack developer",
-  "full-stack engineer",
-  "mern stack developer",
-  "software engineer",
-  "web developer",
-  "ui engineer",
-  "associate frontend developer",
-  "product development engineer frontend",
-  "next.js developer",
-  "nextjs developer",
-  "javascript developer",
-  "react node developer",
-  "react typescript developer",
-];
-
-const LOCATION_VARIANTS = [
-  "India",
-  "Remote India",
-  "Remote",
-  "Bengaluru",
-  "Pune",
-  "Hyderabad",
-  "Mumbai",
-  "Chennai",
-  "Gurgaon",
-  "Noida",
-  "Delhi NCR",
-];
+const { POLICY } = require("./eligibility-policy");
+const ROLE_VARIANTS = POLICY.searchRoles;
+const LOCATION_VARIANTS = POLICY.searchLocations;
 
 function dedupeList(values) {
   return [...new Set((values || []).filter(Boolean))];
 }
 
 function buildAdvancedSearches(siteKey) {
-  const siteRoles = {
-    foundit: ROLE_VARIANTS,
-    naukri: ROLE_VARIANTS,
-    indeed: ROLE_VARIANTS,
-    linkedin: ROLE_VARIANTS,
-    wellfound: [
-      "react",
-      "react developer",
-      "frontend",
-      "frontend engineer",
-      "full stack",
-      "full stack engineer",
-      "next.js",
-      "mern",
-      "javascript",
-      "typescript",
-      "web developer",
-    ],
-    instahyre: [
-      "react developer",
-      "react engineer",
-      "frontend developer",
-      "frontend engineer",
-      "full stack developer",
-      "full stack engineer",
-      "next.js developer",
-      "javascript developer",
-      "typescript developer",
-    ],
-    cutshort: [
-      "react jobs",
-      "frontend developer jobs",
-      "full stack jobs",
-      "javascript jobs",
-      "nextjs jobs",
-    ],
-    hirist: [
-      "react js jobs",
-      "frontend developer jobs",
-      "full stack development jobs",
-      "javascript jobs",
-      "node js jobs",
-    ],
-    yc: [
-      "frontend engineer",
-      "full stack engineer",
-      "react engineer",
-      "software engineer",
-    ],
-  };
-
   const searches = [];
-  const titles = siteRoles[siteKey] || ROLE_VARIANTS;
+  const titles = ROLE_VARIANTS;
 
   for (const role of titles) {
     if (siteKey === "foundit") {
       for (const location of LOCATION_VARIANTS) {
         searches.push(
-          `https://www.foundit.in/srp/results?query=${encodeURIComponent(role)}&location=${encodeURIComponent(location)}&experienceRanges=0~3&sort=1`,
+          `https://www.foundit.in/srp/results?query=${encodeURIComponent(role)}&location=${encodeURIComponent(location)}&experienceRanges=0~${POLICY.maxExperienceYears}&sort=1`,
         );
       }
     } else if (siteKey === "naukri") {
       const shortRole = role.replace(/\s+/g, "-").replace(/\./g, "");
       searches.push(
-        `https://www.naukri.com/${shortRole}-jobs?experience=0&experience=1&experience=2&experience=3`,
+        `https://www.naukri.com/${shortRole}-jobs?${Array.from({ length: POLICY.maxExperienceYears + 1 }, (_, years) => `experience=${years}`).join("&")}`,
       );
     } else if (siteKey === "indeed") {
-      for (const location of [
-        "India",
-        "Remote",
-        "Bengaluru",
-        "Pune",
-        "Hyderabad",
-      ]) {
+      for (const location of LOCATION_VARIANTS) {
         searches.push(
           `https://in.indeed.com/jobs?q=${encodeURIComponent(role)}&l=${encodeURIComponent(location)}&sc=0kf%3Aattr%28DS3S6%29%3B&sort=date&fromage=7`,
         );
       }
     } else if (siteKey === "linkedin") {
-      for (const location of [
-        "India",
-        "Remote India",
-        "Bengaluru",
-        "Pune",
-        "Hyderabad",
-      ]) {
+      for (const location of LOCATION_VARIANTS) {
         searches.push(
           `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(role)}&location=${encodeURIComponent(location)}&f_AL=true&f_E=2%2C3&sortBy=DD&f_TPR=r604800`,
         );
