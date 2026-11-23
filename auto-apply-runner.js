@@ -35,6 +35,7 @@ const {
 const { browserHelperSource } = require("./eligibility-policy");
 const {
   buildAdvancedSearches,
+  rankSearches,
   rotateSearches,
   recordSearchActivity,
 } = require("./search-planner");
@@ -617,7 +618,12 @@ function buildInjection() {
       const mScore = clean.match(/(?:Evaluation Score|Score): (\d+)\/100/);
       if (mScore && pendingJob) {
         pendingJob.score = mScore[1];
-        if (Number(mScore[1]) >= 65 && pendingJob.searchUrl) {
+        const platformThreshold =
+          eligibilityPolicy.scoreThresholds[SITE_ARG] || 65;
+        if (
+          Number(mScore[1]) >= platformThreshold &&
+          pendingJob.searchUrl
+        ) {
           recordSearchActivity(
             searchState,
             pendingJob.searchUrl,
@@ -672,8 +678,9 @@ function buildInjection() {
   ctx.pages().forEach(wire);
   ctx.on("page", wire);
 
+  const rankedSearches = rankSearches(site.searches, searchState);
   const searchPlan = rotateSearches(
-    site.searches,
+    rankedSearches,
     searchState.nextSearchIndex,
   );
   for (const { index: searchIdx, url: searchUrl } of searchPlan) {

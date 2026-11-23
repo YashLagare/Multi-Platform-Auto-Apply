@@ -2,6 +2,7 @@ const assert = require("assert");
 const {
   buildAdvancedSearches,
   rotateSearches,
+  rankSearches,
   describeSearch,
   recordSearchActivity,
 } = require("./search-planner");
@@ -38,6 +39,27 @@ assert.deepStrictEqual(
 );
 assert.deepStrictEqual(rotateSearches(searches, 3), rotateSearches(searches, 0));
 assert.deepStrictEqual(rotateSearches([], 0), []);
+
+const yieldState = {
+  searches: {
+    first: { visits: 5, eligibleJobs: 1, confirmedApplications: 1 },
+    second: { visits: 5, eligibleJobs: 4, confirmedApplications: 1 },
+  },
+};
+assert.deepStrictEqual(
+  rankSearches(["first", "second", "third"], yieldState),
+  ["third", "second", "first"],
+);
+const equalVisitedState = {
+  searches: {
+    first: { visits: 2, eligibleJobs: 2, confirmedApplications: 0 },
+    second: { visits: 2, eligibleJobs: 2, confirmedApplications: 0 },
+  },
+};
+assert.deepStrictEqual(
+  rankSearches(["second", "first"], equalVisitedState),
+  ["second", "first"],
+);
 
 assert.deepStrictEqual(
   describeSearch("https://example.com/jobs?q=frontend&l=India"),

@@ -70,6 +70,40 @@ function rotateSearches(searches, startIndex = 0) {
   }));
 }
 
+function rankSearches(searches, state) {
+  const metrics = state?.searches || {};
+  return [...(searches || [])].sort((left, right) => {
+    const leftMetric = metrics[left];
+    const rightMetric = metrics[right];
+    const leftVisits = Number(leftMetric?.visits || 0);
+    const rightVisits = Number(rightMetric?.visits || 0);
+
+    if (!leftVisits && rightVisits) return -1;
+    if (leftVisits && !rightVisits) return 1;
+    if (!leftVisits && !rightVisits) {
+      return searches.indexOf(left) - searches.indexOf(right);
+    }
+
+    const leftEligibleRate =
+      Number(leftMetric?.eligibleJobs || 0) / leftVisits;
+    const rightEligibleRate =
+      Number(rightMetric?.eligibleJobs || 0) / rightVisits;
+    if (leftEligibleRate !== rightEligibleRate) {
+      return rightEligibleRate - leftEligibleRate;
+    }
+
+    const leftConfirmedRate =
+      Number(leftMetric?.confirmedApplications || 0) / leftVisits;
+    const rightConfirmedRate =
+      Number(rightMetric?.confirmedApplications || 0) / rightVisits;
+    if (leftConfirmedRate !== rightConfirmedRate) {
+      return rightConfirmedRate - leftConfirmedRate;
+    }
+
+    return leftVisits - rightVisits;
+  });
+}
+
 function describeSearch(searchUrl) {
   try {
     const url = new URL(searchUrl);
@@ -126,6 +160,7 @@ function recordSearchActivity(
 
 module.exports = {
   buildAdvancedSearches,
+  rankSearches,
   rotateSearches,
   describeSearch,
   recordSearchActivity,

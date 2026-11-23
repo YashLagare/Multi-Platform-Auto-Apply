@@ -152,14 +152,24 @@ if (searchPerformance.length) {
   searchPerformance
     .sort(
       (a, b) =>
+        (b.eligibleJobs / Math.max(b.visits, 1)) -
+          (a.eligibleJobs / Math.max(a.visits, 1)) ||
+        (b.confirmedApplications / Math.max(b.visits, 1)) -
+          (a.confirmedApplications / Math.max(a.visits, 1)) ||
         b.eligibleJobs - a.eligibleJobs ||
         b.confirmedApplications - a.confirmedApplications ||
         b.visits - a.visits,
     )
     .slice(0, 10)
     .forEach((search, index) => {
+      const eligibleRate = search.visits
+        ? ((search.eligibleJobs / search.visits) * 100).toFixed(1)
+        : "0.0";
+      const conversionRate = search.visits
+        ? ((search.confirmedApplications / search.visits) * 100).toFixed(1)
+        : "0.0";
       console.log(
-        `  ${index + 1}. [${search.platform.toUpperCase()}] ${search.query} ${search.location ? `(${search.location})` : ''} — eligible: ${search.eligibleJobs}, confirmed: ${search.confirmedApplications}, visits: ${search.visits}`,
+        `  ${index + 1}. [${search.platform.toUpperCase()}] ${search.query} ${search.location ? `(${search.location})` : ''} — eligible: ${search.eligibleJobs} (${eligibleRate}%/visit), confirmed: ${search.confirmedApplications} (${conversionRate}%/visit), visits: ${search.visits}`,
       );
     });
 } else {
