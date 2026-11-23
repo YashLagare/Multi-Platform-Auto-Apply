@@ -301,6 +301,94 @@ function clickApplyButton(button, liveMode) {
   return true;
 }
 
+function sanitizeAnswer(answer) {
+  const text = String(answer || "").trim();
+  if (
+    !text ||
+    /\b(?:cannot determine|can(?:not|'t) determine|unable to determine|can(?:not|'t) answer|not enough information|insufficient information|not provided|not specified|not available in (?:the )?profile|unknown from (?:the )?profile|unsupported|unanswered|the profile (?:does not|doesn't) (?:specify|include|mention))\b/i.test(
+      text,
+    )
+  ) {
+    return "";
+  }
+  return text;
+}
+
+function isSensitiveApplicationQuestion(question) {
+  return /\b(?:current employer|current company|company name|current salary|expected salary|minimum salary|salary requirement|current ctc|expected ctc|compensation|notice period|availability|start date|joining date|when can you (?:start|join)|how soon can you (?:start|join)|earliest start|work authorization|authorized to work|eligible to work|work permit|right to work|citizenship|nationality|visa|sponsorship|date of birth|dob|gender|relocat|remote work|work remotely|remote position|work from home|preferred work location|current location|where are you based|phone|mobile|email|address|criminal record|security clearance)\b/i.test(
+    String(question || ""),
+  );
+}
+
+function getMissingRequiredFields(container) {
+  if (!container || typeof container.querySelectorAll !== "function") {
+    return [];
+  }
+  const fields = Array.from(
+    container.querySelectorAll("input, textarea, select"),
+  );
+  const missing = [];
+  const checkedRadioGroups = new Set();
+  for (const field of fields) {
+    if (field.disabled || field.type === "hidden") continue;
+    if (
+      typeof field.getClientRects === "function" &&
+      field.getClientRects().length === 0
+    ) {
+      continue;
+    }
+
+    const labelText = [
+      field.getAttribute?.("aria-label"),
+      field.getAttribute?.("placeholder"),
+      field.closest?.("label")?.textContent,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const required =
+      field.required ||
+      field.getAttribute?.("aria-required") === "true" ||
+      /\*/.test(labelText);
+    if (!required) continue;
+
+    if (field.validity?.valueMissing) {
+      missing.push(
+        field.getAttribute?.("name") ||
+          field.getAttribute?.("placeholder") ||
+          field.getAttribute?.("aria-label") ||
+          field.closest?.("label")?.textContent?.trim() ||
+          field.type ||
+          "required field",
+      );
+      continue;
+    }
+
+    if (field.type === "radio" && field.name) {
+      if (checkedRadioGroups.has(field.name)) continue;
+      checkedRadioGroups.add(field.name);
+      const group = fields.filter(
+        (candidate) =>
+          candidate.type === "radio" && candidate.name === field.name,
+      );
+      if (group.some((candidate) => candidate.checked)) continue;
+    } else if (field.type === "checkbox") {
+      if (field.checked) continue;
+    } else if (String(field.value || "").trim()) {
+      continue;
+    }
+
+    missing.push(
+      field.getAttribute?.("name") ||
+        field.getAttribute?.("placeholder") ||
+        field.getAttribute?.("aria-label") ||
+        field.closest?.("label")?.textContent?.trim() ||
+        field.type ||
+        "required field",
+    );
+  }
+  return missing;
+}
+
 const browserHelpers = {
   checkTitle,
   checkExperience,
@@ -308,6 +396,9 @@ const browserHelpers = {
   checkJobQuality,
   applyQualityAdjustment,
   clickApplyButton,
+  sanitizeAnswer,
+  isSensitiveApplicationQuestion,
+  getMissingRequiredFields,
 };
 
 function browserHelperSource() {
@@ -324,5 +415,8 @@ module.exports = {
   checkJobQuality,
   applyQualityAdjustment,
   clickApplyButton,
+  sanitizeAnswer,
+  isSensitiveApplicationQuestion,
+  getMissingRequiredFields,
   browserHelperSource,
 };

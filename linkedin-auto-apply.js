@@ -76,8 +76,8 @@
     [/phone|mobile|contact/i, CV.phone || ""],
     [/email/i, CV.email || ""],
     [/city|current location|where are you based/i, CV.location],
-    [/relocat/i, CV.relocate || "Yes, open to relocation."],
-    [/remote/i, CV.remoteOk || "Yes, fully comfortable with remote/hybrid."],
+    [/relocat/i, CV.relocate],
+    [/remote/i, CV.remoteOk],
   ];
 
   // ======================= HELPERS =======================
@@ -337,6 +337,12 @@
         /^submit application$|^submit$|^send application$/i,
       );
       if (submitBtn) {
+        const missingFields =
+          window.__APPLY_POLICY_HELPERS.getMissingRequiredFields(modal);
+        if (missingFields.length) {
+          log(`  ⚠ Required answers need review: ${missingFields.join(", ")}`);
+          return false;
+        }
         if (CONFIG.DRY_RUN) {
           log("  🔍 DRY_RUN — would click submit:", submitBtn.textContent.trim());
           findButtonByText(modal, /dismiss|cancel|close|×/i)?.click();
@@ -374,20 +380,11 @@
         if (/experience|years/i.test(label)) {
           setValue(inp, String(CV.experienceYears));
         } else if (/notice|join|start/i.test(label)) {
-          setValue(inp, "0");
+          if (CV.noticePeriod) setValue(inp, CV.noticePeriod);
         } else if (/salary|ctc|compensation/i.test(label)) {
-          setValue(inp, CV.expectedCTC || "4.5");
+          if (CV.expectedCTC) setValue(inp, CV.expectedCTC);
         } else if (/phone|mobile/i.test(label)) {
           setValue(inp, CV.phone || "");
-        }
-      }
-
-      // Radio / Select options (default to Yes for work auth / relocation)
-      const radios = [...modal.querySelectorAll('input[type="radio"]')].filter(visible);
-      for (const r of radios) {
-        const rLabel = (r.closest("label")?.textContent || "").toLowerCase();
-        if (/yes/i.test(rLabel)) {
-          r.click();
         }
       }
 

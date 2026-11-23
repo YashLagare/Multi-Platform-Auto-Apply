@@ -59,6 +59,7 @@
 
   // ======================= QA BANK =======================
   const QA_BANK = [
+    [/company name|current (company|employer)/i, CV.company],
     [
       /notice period|when can you (start|join)|start date|availability|joining/i,
       CV.noticePeriod,
@@ -76,20 +77,29 @@
       CV.experienceSummary,
     ],
     [
+      /visa|sponsorship|work authorization|legally authorized|right to work|citizen/i,
+      CV.workAuth,
+    ],
+    [/where are you (based|located)|current location|city/i, CV.location],
+    [/phone|contact number|mobile/i, CV.phone],
+    [/e-?mail/i, CV.email],
+    [/linkedin|github|portfolio|website|link/i, CV.links],
+    [/education|degree|university|college/i, CV.education],
+    [
       /react|frontend|front-end/i,
-      "Strong experience with React.js, Next.js, TypeScript, Redux, Zustand, and Tailwind CSS.",
+      `My relevant skills include ${CV.skills}.`,
     ],
     [
       /node|backend|back-end|api/i,
-      "Experienced in building scalable Node.js/Express backends, REST APIs, MongoDB, PostgreSQL, and Prisma.",
+      `My relevant skills include ${CV.skills}.`,
     ],
     [
       /remote|work from home|wfh/i,
-      "Yes, fully set up for remote work and open to hybrid/onsite in target locations.",
+      CV.remoteOk,
     ],
     [
       /reloc|move to|based out of|location/i,
-      `Yes, open to relocation. Currently based in ${CV.location || "Maharashtra, India"}.`,
+      CV.relocate,
     ],
     [/github|portfolio|linkedin|profile link/i, CV.links],
     [
@@ -98,11 +108,7 @@
     ],
   ];
 
-  const GENERIC_ANSWER =
-    `${CV.profileHeadline}. ${CV.profileSummary} Key highlights: ` +
-    (CV.highlights.slice(0, 2).join("; ") ||
-      "shipping production features end to end") +
-    ".";
+  const GENERIC_ANSWER = "";
 
   // ======================= HELPERS =======================
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -364,6 +370,11 @@
     for (const [pattern, answer] of QA_BANK) {
       if (pattern.test(label)) return answer;
     }
+    if (
+      window.__APPLY_POLICY_HELPERS.isSensitiveApplicationQuestion(label)
+    ) {
+      return "";
+    }
     const prompt = `You are answering a screening question on Naukri.com on my behalf. Answer in first person, 1-3 sentences, professional, no markdown. Use only facts in the profile; if it does not contain the answer, say that you cannot determine it.\n\nMy professional profile:\n${JSON.stringify(CV.aiProfile)}\n\nQuestion: ${label}`;
 
     // 1. OpenRouter
@@ -389,7 +400,7 @@
         clearTimeout(timeoutId);
         const data = await res.json();
         const text = data?.choices?.[0]?.message?.content?.trim();
-        if (text) return text;
+        if (text) return window.__APPLY_POLICY_HELPERS.sanitizeAnswer(text);
       } catch (e) {}
     }
 
@@ -412,7 +423,7 @@
         clearTimeout(timeoutId);
         const data = await res.json();
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-        if (text) return text;
+        if (text) return window.__APPLY_POLICY_HELPERS.sanitizeAnswer(text);
       } catch (e) {
         log("AI call skipped/failed:", e.message);
       }
@@ -435,29 +446,7 @@
 
     log("  📋 Answering Naukri Chatbot / Questionnaire modal...");
 
-    // 1. Radio / Button choices in Chatbot (e.g. Notice period choices)
-    const radioButtons = [
-      ...container.querySelectorAll(
-        'input[type="radio"], .option, .radio-option, [role="radio"]',
-      ),
-    ].filter(visible);
-    for (const rb of radioButtons) {
-      const txt = (
-        rb.textContent ||
-        rb.value ||
-        rb.nextElementSibling?.textContent ||
-        ""
-      ).toLowerCase();
-      if (/immediate|0|15|yes/i.test(txt)) {
-        try {
-          rb.click();
-        } catch (e) {}
-        log("  ✍ Selected option:", txt.slice(0, 30));
-        await sleep(400);
-      }
-    }
-
-    // 2. Text / Number Inputs
+    // 1. Text / Number Inputs
     const inputs = [
       ...container.querySelectorAll(
         'input[type="text"], input[type="number"], input[type="tel"]',
@@ -470,33 +459,20 @@
         inp.closest("label")?.textContent ||
         "";
       if (/current.*ctc|current.*salary/i.test(label)) {
-        setValue(inp, CV.currentCTC || "3");
+        if (CV.currentCTC) setValue(inp, CV.currentCTC);
       } else if (/expected.*ctc|expected.*salary/i.test(label)) {
-        setValue(inp, CV.expectedCTC || "4.5");
+        if (CV.expectedCTC) setValue(inp, CV.expectedCTC);
       } else if (/notice/i.test(label)) {
-        setValue(inp, "0");
+        if (CV.noticePeriod) setValue(inp, CV.noticePeriod);
       } else if (/experience/i.test(label)) {
-        setValue(inp, "1");
+        setValue(inp, String(CV.experienceYears));
       } else {
         const ans = await answerQuestion(label);
-        setValue(inp, ans);
+        if (ans) setValue(inp, ans);
       }
     }
 
-    // 3. Dropdowns
-    const selects = [...container.querySelectorAll("select")].filter(visible);
-    for (const sel of selects) {
-      const opts = [...sel.options].filter(
-        (o) => o.value && !/^select|^choose/i.test(o.text),
-      );
-      if (!opts.length) continue;
-      const pick =
-        opts.find((o) => /immediate|0|15|yes|available/i.test(o.text)) ||
-        opts[0];
-      setValue(sel, pick.value);
-    }
-
-    // 4. Textareas
+    // 2. Textareas
     const textareas = [...container.querySelectorAll("textarea")].filter(
       visible,
     );
@@ -506,10 +482,17 @@
         ta.closest("label")?.textContent ||
         "";
       const ans = await answerQuestion(label);
-      setValue(ta, ans);
+      if (ans) setValue(ta, ans);
     }
 
-    // 5. Submit button (Search document-wide inside open drawer / modal)
+    const missingFields =
+      window.__APPLY_POLICY_HELPERS.getMissingRequiredFields(container);
+    if (missingFields.length) {
+      log(`  ⚠ Required answers need review: ${missingFields.join(", ")}`);
+      return false;
+    }
+
+    // 3. Submit button (Search document-wide inside open drawer / modal)
     const submitBtn =
       findButtonByText(
         container,

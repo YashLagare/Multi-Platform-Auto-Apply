@@ -383,6 +383,13 @@
       }
     }
 
+    const missingFields =
+      window.__APPLY_POLICY_HELPERS.getMissingRequiredFields(modal);
+    if (missingFields.length) {
+      log(`  ⚠ Required answers need review: ${missingFields.join(", ")}`);
+      return false;
+    }
+
     const submitBtn = findButtonByText(
       modal,
       /^apply$|^submit$|^send$|^send application$|^apply to role$/i,

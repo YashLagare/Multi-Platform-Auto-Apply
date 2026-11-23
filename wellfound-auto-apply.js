@@ -111,10 +111,7 @@
     [/your name|full name|\bname\b/i, CV.name],
   ];
 
-  const GENERIC_ANSWER =
-    `${CV.profileHeadline}. ${CV.profileSummary} Key highlights: ` +
-    CV.highlights.slice(0, 2).join("; ") +
-    ".";
+  const GENERIC_ANSWER = "";
 
   // ======================= COVER LETTER BUILDER =======================
   function coverLetter(company, title) {
@@ -459,6 +456,13 @@ ${CV.name}`;
     for (const [pattern, answer] of QA_BANK) {
       if (pattern.test(questionText)) return answer;
     }
+    if (
+      window.__APPLY_POLICY_HELPERS.isSensitiveApplicationQuestion(
+        questionText,
+      )
+    ) {
+      return "";
+    }
     const prompt = `You are answering a job application question on my behalf. Answer in first person, 2-4 sentences, professional, no markdown. Use only facts in the profile; if it does not contain the answer, say that you cannot determine it.\n\nMy professional profile:\n${JSON.stringify(CV.aiProfile)}\n\nQuestion: ${questionText}`;
     
     // 1. OpenRouter
@@ -480,7 +484,7 @@ ${CV.name}`;
         });
         const data = await res.json();
         const text = data?.choices?.[0]?.message?.content?.trim();
-        if (text) return text;
+        if (text) return window.__APPLY_POLICY_HELPERS.sanitizeAnswer(text);
       } catch (e) {}
     }
 
@@ -499,7 +503,7 @@ ${CV.name}`;
         );
         const data = await res.json();
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-        if (text) return text;
+        if (text) return window.__APPLY_POLICY_HELPERS.sanitizeAnswer(text);
       } catch (e) {
         log("AI call failed, using generic answer:", e.message);
       }
@@ -562,81 +566,22 @@ ${CV.name}`;
         field.required ||
         field.getAttribute("aria-required") === "true" ||
         /\*/.test(label);
-      if (answer === GENERIC_ANSWER && !required) {
+      if (!answer && !required) {
         log(`  ⏭ optional unknown question skipped: "${label.slice(0, 50)}"`);
         continue;
       }
-      setValue(field, answer);
+      if (answer) setValue(field, answer);
       log(`  ✍ answered: "${label.slice(0, 60)}..."`);
     }
 
-    // 3. Relocation & options
-    if (
-      /does not support the locations|update your location preferences/i.test(
-        scope.textContent,
-      )
-    ) {
-      const relocateChoice = [
-        ...scope.querySelectorAll('label, [role="radio"], button, div'),
-      ]
-        .filter(visible)
-        .find(
-          (el) =>
-            /i can relocate/i.test(el.textContent) &&
-            el.textContent.length < 80,
-        );
-      if (relocateChoice) {
-        relocateChoice.click();
-        log('  📍 chose "I can relocate to…"');
-        await sleep(800);
-        const nativeSel = [...scope.querySelectorAll("select")]
-          .filter(visible)
-          .pop();
-        if (nativeSel) {
-          const opts = [...nativeSel.options].filter(
-            (o) => o.value && !/select|choose/i.test(o.text),
-          );
-          if (opts.length) setValue(nativeSel, opts[0].value);
-        }
-      }
+    const missingFields =
+      window.__APPLY_POLICY_HELPERS.getMissingRequiredFields(scope);
+    if (missingFields.length) {
+      log(`  ⚠ Required answers need review: ${missingFields.join(", ")}`);
+      return false;
     }
 
-    // Dropdowns / Radios / Checkboxes
-    const YES =
-      /yes|willing|open to|agree|relocat|remote|immediat|i am able|i can/i;
-    for (const sel of [...scope.querySelectorAll("select")].filter(visible)) {
-      const opts = [...sel.options].filter(
-        (o) => o.value && !/^select|^choose|^--/i.test(o.text.trim()),
-      );
-      if (!opts.length) continue;
-      const pick = opts.find((o) => YES.test(o.text)) || opts[0];
-      setValue(sel, pick.value);
-    }
-
-    const radioGroups = {};
-    for (const r of [...scope.querySelectorAll('input[type="radio"]')].filter(
-      visible,
-    )) {
-      (radioGroups[r.name || labelTextOf(r)] ||= []).push(r);
-    }
-    for (const group of Object.values(radioGroups)) {
-      let pick = group.find((r) => YES.test(labelTextOf(r))) || group[0];
-      if (!pick.checked) pick.click();
-    }
-
-    for (const cb of [
-      ...scope.querySelectorAll('input[type="checkbox"]'),
-    ].filter(visible)) {
-      const own = labelTextOf(cb);
-      if (
-        !cb.checked &&
-        /relocat|agree|confirm|authoriz|terms|acknowledge|remote/i.test(own)
-      ) {
-        cb.click();
-      }
-    }
-
-    // 4. Send / Apply Button
+    // 3. Send / Apply Button
     const sendBtn = await waitFor(
       () => findButtonByText(scope, /^apply$|^send$|submit|send application/i),
       12000,

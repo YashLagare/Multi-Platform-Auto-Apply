@@ -129,9 +129,8 @@ const CV = {
   portfolio: g("PORTFOLIO_URL"),
   links: `GitHub: ${g("GITHUB_URL")} | LinkedIn: ${g("LINKEDIN_URL")} | Portfolio: ${g("PORTFOLIO_URL")}`,
   // derived sentences
-  remoteOk:
-    "Yes, I am fully set up for remote work and also open to hybrid/onsite.",
-  relocate: `Yes, I am open to relocation. I am currently based in ${g("LOCATION")}.`,
+  remoteOk: g("REMOTE_WORK_PREFERENCE"),
+  relocate: g("RELOCATION_PREFERENCE"),
   startDate: noticePeriod
     ? noticePeriod.toLowerCase().startsWith("immediat")
       ? "I am available to join immediately."

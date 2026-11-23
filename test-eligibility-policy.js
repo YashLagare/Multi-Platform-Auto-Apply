@@ -8,6 +8,9 @@ const {
   checkJobQuality,
   applyQualityAdjustment,
   clickApplyButton,
+  sanitizeAnswer,
+  isSensitiveApplicationQuestion,
+  getMissingRequiredFields,
   browserHelperSource,
 } = require("./eligibility-policy");
 
@@ -138,6 +141,94 @@ assert.strictEqual(clickApplyButton(null, true), false);
 assert.strictEqual(clickCount, 0);
 assert.strictEqual(clickApplyButton(fakeApplyButton, true), true);
 assert.strictEqual(clickCount, 1);
+assert.strictEqual(
+  sanitizeAnswer("I cannot determine that from the profile."),
+  "",
+);
+assert.strictEqual(
+  sanitizeAnswer("The profile does not specify my citizenship."),
+  "",
+);
+assert.strictEqual(
+  sanitizeAnswer("I built production React applications."),
+  "I built production React applications.",
+);
+assert.strictEqual(
+  isSensitiveApplicationQuestion("Do you require visa sponsorship?"),
+  true,
+);
+assert.strictEqual(
+  isSensitiveApplicationQuestion("Are you legally authorized to work?"),
+  true,
+);
+assert.strictEqual(
+  isSensitiveApplicationQuestion("How soon can you start?"),
+  true,
+);
+assert.strictEqual(
+  isSensitiveApplicationQuestion("Why are you interested in this role?"),
+  false,
+);
+const requiredInput = {
+  type: "text",
+  name: "salary",
+  required: true,
+  value: "",
+  disabled: false,
+  getAttribute(name) {
+    return name === "name" ? this.name : null;
+  },
+};
+const requiredContainer = { querySelectorAll: () => [requiredInput] };
+assert.deepStrictEqual(getMissingRequiredFields(requiredContainer), ["salary"]);
+requiredInput.value = "4.5";
+assert.deepStrictEqual(getMissingRequiredFields(requiredContainer), []);
+const requiredSelect = {
+  type: "select-one",
+  name: "work-mode",
+  required: true,
+  value: "placeholder",
+  validity: { valueMissing: true },
+  disabled: false,
+  getAttribute(name) {
+    return name === "name" ? this.name : null;
+  },
+};
+assert.deepStrictEqual(
+  getMissingRequiredFields({
+    querySelectorAll: () => [requiredSelect],
+  }),
+  ["work-mode"],
+);
+const radioFields = [
+  {
+    type: "radio",
+    name: "work-auth",
+    required: true,
+    checked: false,
+    disabled: false,
+    getAttribute(name) {
+      return name === "name" ? this.name : null;
+    },
+  },
+  {
+    type: "radio",
+    name: "work-auth",
+    required: true,
+    checked: false,
+    disabled: false,
+    getAttribute(name) {
+      return name === "name" ? this.name : null;
+    },
+  },
+];
+const radioContainer = { querySelectorAll: () => radioFields };
+assert.deepStrictEqual(
+  getMissingRequiredFields(radioContainer),
+  ["work-auth"],
+);
+radioFields[1].checked = true;
+assert.deepStrictEqual(getMissingRequiredFields(radioContainer), []);
 
 assert.strictEqual(POLICY.salary.minimumLpa, 3);
 assert.deepStrictEqual(POLICY.salary.targetRangeLpa, [4, 6]);

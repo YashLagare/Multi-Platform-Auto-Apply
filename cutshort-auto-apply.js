@@ -77,8 +77,8 @@
     [/phone|mobile|contact/i, CV.phone || ""],
     [/email/i, CV.email || ""],
     [/city|current location|where are you based/i, CV.location],
-    [/relocat/i, CV.relocate || "Yes, open to relocation."],
-    [/remote/i, CV.remoteOk || "Yes, fully comfortable with remote/hybrid."],
+    [/relocat/i, CV.relocate],
+    [/remote/i, CV.remoteOk],
   ];
 
   const GENERIC_PITCH =
@@ -425,16 +425,23 @@
         ""
       ).toLowerCase();
       if (/current.*(?:ctc|salary|comp)/i.test(label)) {
-        setValue(inp, CV.currentCTC || "3");
+        if (CV.currentCTC) setValue(inp, CV.currentCTC);
       } else if (/expected.*(?:ctc|salary|comp)/i.test(label)) {
-        setValue(inp, CV.expectedCTC || "4.5");
+        if (CV.expectedCTC) setValue(inp, CV.expectedCTC);
       } else if (/notice|join|start/i.test(label)) {
-        setValue(inp, CV.noticePeriod);
+        if (CV.noticePeriod) setValue(inp, CV.noticePeriod);
       } else if (/experience/i.test(label)) {
         setValue(inp, String(CV.experienceYears));
       } else if (/portfolio|github|link/i.test(label)) {
         setValue(inp, CV.portfolio || CV.github || "");
       }
+    }
+
+    const missingFields =
+      window.__APPLY_POLICY_HELPERS.getMissingRequiredFields(modal);
+    if (missingFields.length) {
+      log(`  ⚠ Required answers need review: ${missingFields.join(", ")}`);
+      return false;
     }
 
     // 3. Submit button
