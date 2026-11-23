@@ -144,7 +144,7 @@
   }
 
   function markJobAsApplied(jobId, jobData) {
-    if (!jobId) return;
+    if (!jobId || CONFIG.DRY_RUN !== false) return;
     try {
       localStorage.setItem(`nk_applied_${jobId}`, "true");
       const history = JSON.parse(
@@ -548,7 +548,15 @@
     }
 
     try {
-      submitBtn.click();
+      if (
+        !window.__APPLY_POLICY_HELPERS.clickApplyButton(
+          submitBtn,
+          CONFIG.DRY_RUN === false,
+        )
+      ) {
+        log("  ⚠ Submit blocked because live mode is not explicitly enabled");
+        return false;
+      }
     } catch (e) {}
     await sleep(1500);
     log("  ✅ Application submitted in Chatbot modal");
@@ -770,7 +778,16 @@
       return;
     }
 
-    applyBtn.click();
+    if (
+      !window.__APPLY_POLICY_HELPERS.clickApplyButton(
+        applyBtn,
+        CONFIG.DRY_RUN === false,
+      )
+    ) {
+      log(`  🔍 DRY_RUN — would click Apply for ${title}`);
+      applied++;
+      return;
+    }
     await sleep(2000);
     const ok = await handleNaukriChatbotOrModal(job);
     if (ok) {
@@ -935,7 +952,16 @@
       continue;
     }
 
-    btn.click();
+    if (
+      !window.__APPLY_POLICY_HELPERS.clickApplyButton(
+        btn,
+        CONFIG.DRY_RUN === false,
+      )
+    ) {
+      log(`  🔍 DRY_RUN — would click Apply for ${job.title}`);
+      applied++;
+      continue;
+    }
     await sleep(2000);
 
     const ok = await handleNaukriChatbotOrModal(job);

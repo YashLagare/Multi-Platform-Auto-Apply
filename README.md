@@ -124,6 +124,8 @@ Fill in your details in `.env` once. All 9 platforms share the exact same config
 | **Indeed India** | `npm run login:indeed` | `npm run dry-run:indeed` | `npm run apply:indeed` |
 | **LinkedIn** | `npm run login:linkedin` | `npm run dry-run:linkedin` | `npm run apply:linkedin` |
 
+Dry-run mode never clicks an Apply or final Submit button and does not add jobs to local applied history. It can still open job details and report eligible applications it would attempt. Live clicks require the runner to explicitly set live mode through the `npm run apply:<platform>` command.
+
 ### Hirist troubleshooting
 
 Hirist runs report the final page URL, HTTP response, page title, detected job-link count, and login/verification/no-results indicators before scraping. A 403 from Hirist's chat-service permission endpoint is reported separately from a likely job-feed 403; it does not by itself prove the job feed was denied. Empty search categories are skipped instead of polled for several minutes. If every category has zero job links, verify that the search feed loads in the saved Chrome profile. A live application is only recorded after the page shows an application confirmation; dry runs do not submit or mark jobs as applied.

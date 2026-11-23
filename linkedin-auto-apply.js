@@ -117,7 +117,7 @@
   }
 
   function markJobAsApplied(jobId, jobData) {
-    if (!jobId) return;
+    if (!jobId || CONFIG.DRY_RUN !== false) return;
     try {
       localStorage.setItem(`li_applied_${jobId}`, "true");
       const history = JSON.parse(
@@ -344,7 +344,15 @@
           findButtonByText(document, /discard/i)?.click();
           return true;
         }
-        submitBtn.click();
+        if (
+          !window.__APPLY_POLICY_HELPERS.clickApplyButton(
+            submitBtn,
+            CONFIG.DRY_RUN === false,
+          )
+        ) {
+          log("  ⚠ Submit blocked because live mode is not explicitly enabled");
+          return false;
+        }
         log("  ✅ LinkedIn Easy Apply submitted successfully!");
         return true;
       }
@@ -540,7 +548,18 @@
       }
 
       log(`  ✨ Triggering LinkedIn Easy Apply...`);
-      easyApplyBtn.click();
+      if (
+        !window.__APPLY_POLICY_HELPERS.clickApplyButton(
+          easyApplyBtn,
+          CONFIG.DRY_RUN === false,
+        )
+      ) {
+        log(
+          `  🔍 DRY_RUN — would open LinkedIn Easy Apply for ${card.title}`,
+        );
+        appliedCount++;
+        continue;
+      }
       await sleep(2500);
 
       const success = await handleLinkedInModal();

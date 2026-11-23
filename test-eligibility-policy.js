@@ -7,6 +7,7 @@ const {
   checkLocation,
   checkJobQuality,
   applyQualityAdjustment,
+  clickApplyButton,
   browserHelperSource,
 } = require("./eligibility-policy");
 
@@ -129,6 +130,15 @@ assert.strictEqual(rejectedBorderlineResult.score, 54);
 assert.strictEqual(rejectedBorderlineResult.passed, false);
 assert.strictEqual(rejectedBorderlineResult.action, "LOW_SCORE_SKIP");
 
+let clickCount = 0;
+const fakeApplyButton = { click: () => clickCount++ };
+assert.strictEqual(clickApplyButton(fakeApplyButton, false), false);
+assert.strictEqual(clickApplyButton(fakeApplyButton, undefined), false);
+assert.strictEqual(clickApplyButton(null, true), false);
+assert.strictEqual(clickCount, 0);
+assert.strictEqual(clickApplyButton(fakeApplyButton, true), true);
+assert.strictEqual(clickCount, 1);
+
 assert.strictEqual(POLICY.salary.minimumLpa, 3);
 assert.deepStrictEqual(POLICY.salary.targetRangeLpa, [4, 6]);
 assert.strictEqual(POLICY.maxExperienceYears, 2);
@@ -174,5 +184,14 @@ const browserAdjustedResult =
     75,
   );
 assert.strictEqual(browserAdjustedResult.score, 55);
+const browserFakeButton = { clicked: false, click() { this.clicked = true; } };
+assert.strictEqual(
+  browserContext.window.__APPLY_POLICY_HELPERS.clickApplyButton(
+    browserFakeButton,
+    false,
+  ),
+  false,
+);
+assert.strictEqual(browserFakeButton.clicked, false);
 
 console.log("Shared eligibility policy tests passed.");

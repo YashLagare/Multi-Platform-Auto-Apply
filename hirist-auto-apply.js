@@ -125,7 +125,7 @@
   }
 
   function markJobAsApplied(jobId, jobData) {
-    if (!jobId) return;
+    if (!jobId || CONFIG.DRY_RUN !== false) return;
     try {
       localStorage.setItem(`hi_applied_${jobId}`, "true");
       const history = JSON.parse(
@@ -428,7 +428,15 @@
       return true;
     }
 
-    submitBtn.click();
+    if (
+      !window.__APPLY_POLICY_HELPERS.clickApplyButton(
+        submitBtn,
+        CONFIG.DRY_RUN === false,
+      )
+    ) {
+      log("  ⚠ Submit blocked because live mode is not explicitly enabled");
+      return false;
+    }
     const confirmed = await waitFor(() => hasApplicationConfirmation(), 8000);
     if (!confirmed) {
       log("  ⚠ Modal closed or submitted without a visible confirmation");
@@ -674,7 +682,18 @@
       }
 
       log(`  ✨ Triggering Application: "${activeBtn.textContent.trim()}"`);
-      activeBtn.click();
+      if (
+        !window.__APPLY_POLICY_HELPERS.clickApplyButton(
+          activeBtn,
+          CONFIG.DRY_RUN === false,
+        )
+      ) {
+        log(
+          `  🔍 DRY_RUN — would click Apply for ${card.title} @ ${card.company}`,
+        );
+        appliedCount++;
+        continue;
+      }
       await sleep(2000);
 
       const success = await handleHiristModal(card, activeBtn);

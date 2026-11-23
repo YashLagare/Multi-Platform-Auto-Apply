@@ -169,7 +169,7 @@ ${CV.name}`;
   }
 
   function markJobAsApplied(jobId, jobData) {
-    if (!jobId) return;
+    if (!jobId || CONFIG.DRY_RUN !== false) return;
     try {
       localStorage.setItem(`wf_applied_${jobId}`, "true");
       const history = JSON.parse(
@@ -655,7 +655,15 @@ ${CV.name}`;
       return true;
     }
 
-    sendBtn.click();
+    if (
+      !window.__APPLY_POLICY_HELPERS.clickApplyButton(
+        sendBtn,
+        CONFIG.DRY_RUN === false,
+      )
+    ) {
+      log("  ⚠ Apply submit blocked because live mode is not explicitly enabled");
+      return false;
+    }
     log("  ✅ application sent");
     return true;
   }

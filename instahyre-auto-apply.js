@@ -144,7 +144,7 @@
   }
 
   function markJobAsApplied(jobId, jobData) {
-    if (!jobId) return;
+    if (!jobId || CONFIG.DRY_RUN !== false) return;
     try {
       localStorage.setItem(`ih_applied_${jobId}`, "true");
       const history = JSON.parse(
@@ -489,7 +489,15 @@
       return true;
     }
 
-    submitBtn.click();
+    if (
+      !window.__APPLY_POLICY_HELPERS.clickApplyButton(
+        submitBtn,
+        CONFIG.DRY_RUN === false,
+      )
+    ) {
+      log("  ⚠ Submit blocked because live mode is not explicitly enabled");
+      return false;
+    }
     log("  ✅ Application submitted in modal");
     return true;
   }
@@ -696,7 +704,16 @@
 
     job.cardEl.scrollIntoView({ block: "center" });
     await sleep(600);
-    job.applyBtn.click();
+    if (
+      !window.__APPLY_POLICY_HELPERS.clickApplyButton(
+        job.applyBtn,
+        CONFIG.DRY_RUN === false,
+      )
+    ) {
+      log(`  🔍 DRY_RUN — would click Apply for ${job.title} @ ${job.company}`);
+      applied++;
+      continue;
+    }
     await sleep(2000);
 
     const ok = await handleApplyModal(job);

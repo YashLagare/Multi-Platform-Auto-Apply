@@ -38,6 +38,12 @@ const scripts = [
 ];
 for (const script of scripts) {
   const source = fs.readFileSync(path.join(__dirname, script), "utf8");
+  assert(
+    (source.match(/window\.__APPLY_POLICY_HELPERS\.clickApplyButton/g) || [])
+      .length >= 1,
+    script,
+  );
+  assert(source.includes("CONFIG.DRY_RUN !== false"), script);
   const injected = `(async () => {
     window.__APPLY_CONFIG = ${JSON.stringify({
       CV,

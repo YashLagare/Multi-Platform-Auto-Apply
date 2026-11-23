@@ -119,7 +119,7 @@
   }
 
   function markJobAsApplied(jobId, jobData) {
-    if (!jobId) return;
+    if (!jobId || CONFIG.DRY_RUN !== false) return;
     try {
       localStorage.setItem(`in_applied_${jobId}`, "true");
       const history = JSON.parse(
@@ -355,7 +355,15 @@
           findButtonByText(document, /close|cancel|×/i)?.click();
           return true;
         }
-        submitBtn.click();
+        if (
+          !window.__APPLY_POLICY_HELPERS.clickApplyButton(
+            submitBtn,
+            CONFIG.DRY_RUN === false,
+          )
+        ) {
+          log("  ⚠ Submit blocked because live mode is not explicitly enabled");
+          return false;
+        }
         log("  ✅ Indeed Application submitted successfully!");
         return true;
       }
@@ -550,7 +558,18 @@
       }
 
       log(`  ✨ Triggering Apply: "${applyBtn.textContent.trim()}"`);
-      applyBtn.click();
+      if (
+        !window.__APPLY_POLICY_HELPERS.clickApplyButton(
+          applyBtn,
+          CONFIG.DRY_RUN === false,
+        )
+      ) {
+        log(
+          `  🔍 DRY_RUN — would open the Indeed application for ${card.title}`,
+        );
+        appliedCount++;
+        continue;
+      }
       await sleep(2500);
 
       const success = await handleIndeedApplicationModal();

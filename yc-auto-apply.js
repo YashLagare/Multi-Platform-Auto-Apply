@@ -96,7 +96,7 @@
   }
 
   function markJobAsApplied(jobId, jobData) {
-    if (!jobId) return;
+    if (!jobId || CONFIG.DRY_RUN !== false) return;
     try {
       localStorage.setItem(`yc_applied_${jobId}`, "true");
       const history = JSON.parse(
@@ -399,7 +399,15 @@
       return true;
     }
 
-    submitBtn.click();
+    if (
+      !window.__APPLY_POLICY_HELPERS.clickApplyButton(
+        submitBtn,
+        CONFIG.DRY_RUN === false,
+      )
+    ) {
+      log("  ⚠ Submit blocked because live mode is not explicitly enabled");
+      return false;
+    }
     log("  ✅ Application sent to YC Startup");
     return true;
   }
@@ -561,7 +569,18 @@
       }
 
       log(`  ✨ Triggering Application: "${activeBtn.textContent.trim()}"`);
-      activeBtn.click();
+      if (
+        !window.__APPLY_POLICY_HELPERS.clickApplyButton(
+          activeBtn,
+          CONFIG.DRY_RUN === false,
+        )
+      ) {
+        log(
+          `  🔍 DRY_RUN — would trigger application for ${card.title} @ ${card.company}`,
+        );
+        appliedCount++;
+        continue;
+      }
       await sleep(2000);
 
       const success = await handleYCModal(card);

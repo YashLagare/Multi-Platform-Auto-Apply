@@ -293,12 +293,21 @@ function applyQualityAdjustment(
   return result;
 }
 
+function clickApplyButton(button, liveMode) {
+  if (liveMode !== true || !button || typeof button.click !== "function") {
+    return false;
+  }
+  button.click();
+  return true;
+}
+
 const browserHelpers = {
   checkTitle,
   checkExperience,
   checkLocation,
   checkJobQuality,
   applyQualityAdjustment,
+  clickApplyButton,
 };
 
 function browserHelperSource() {
@@ -314,5 +323,6 @@ module.exports = {
   checkLocation,
   checkJobQuality,
   applyQualityAdjustment,
+  clickApplyButton,
   browserHelperSource,
 };
