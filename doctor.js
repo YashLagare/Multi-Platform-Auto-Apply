@@ -9,6 +9,7 @@
 const fs = require("fs");
 const path = require("path");
 const { CV, openrouterKey, geminiKey, aiKey } = require("./config");
+const AI_CHECK_TIMEOUT_MS = 8000;
 
 const PLATFORMS = [
   { key: "wellfound", name: "Wellfound", profile: ".wellfound-chrome-profile" },
@@ -29,22 +30,24 @@ async function checkAI() {
     for (const model of models) {
       const start = Date.now();
       try {
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${openrouterKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/YashLagare/Wellfound-Auto-Apply",
-            "X-Title": "AutoApply-Suite",
+        const { response: res, data } = await fetchJsonWithTimeout(
+          "https://openrouter.ai/api/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${openrouterKey}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": "https://github.com/YashLagare/Wellfound-Auto-Apply",
+              "X-Title": "AutoApply-Suite",
+            },
+            body: JSON.stringify({
+              model,
+              max_tokens: 200,
+              messages: [{ role: "user", content: "Say READY" }],
+            }),
           },
-          body: JSON.stringify({
-            model,
-            max_tokens: 200,
-            messages: [{ role: "user", content: "Say READY" }],
-          }),
-        });
+        );
         if (res.ok) {
-          const data = await res.json();
           const reply = data?.choices?.[0]?.message?.content?.trim();
           if (reply) {
             return {
@@ -66,7 +69,7 @@ async function checkAI() {
     for (const model of models) {
       const start = Date.now();
       try {
-        const res = await fetch(
+        const { response: res, data } = await fetchJsonWithTimeout(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
           {
             method: "POST",
@@ -77,7 +80,6 @@ async function checkAI() {
           },
         );
         if (res.ok) {
-          const data = await res.json();
           const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
           return {
             ok: true,
@@ -93,8 +95,23 @@ async function checkAI() {
 
   return {
     ok: false,
-    reason: "No active AI key found or provider quota exceeded",
+    reason: "No active AI key found or provider request failed or timed out",
   };
+}
+
+async function fetchJsonWithTimeout(url, options) {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    AI_CHECK_TIMEOUT_MS,
+  );
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    const data = await response.json();
+    return { response, data };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function hasSessionData(profileDir) {
@@ -167,12 +184,14 @@ function hasSessionData(profileDir) {
     const ready = hasSessionData(p.profile);
     if (ready) {
       loggedInCount++;
-      console.log(`  ✅ ${p.name.padEnd(20)}: Profile Active (${p.profile})`);
+      console.log(
+        `  ✅ ${p.name.padEnd(20)}: Profile data present (${p.profile}; sign-in may still be required)`,
+      );
     } else {
       console.log(`  ⚪ ${p.name.padEnd(20)}: Not logged in yet -> run 'npm run login:${p.key}'`);
     }
   }
-  console.log(`  📊 Session Readiness: ${loggedInCount}/${PLATFORMS.length} platforms initialized.`);
+  console.log(`  📊 Profiles initialized: ${loggedInCount}/${PLATFORMS.length}.`);
 
   // 4. Persistence & Database Integrity
   console.log("\n💾 [4/4] Applications Database & CSV Logs:");

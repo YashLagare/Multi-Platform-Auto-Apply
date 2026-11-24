@@ -39,6 +39,12 @@ const {
   rotateSearches,
   recordSearchActivity,
 } = require("./search-planner");
+const {
+  createRunReport,
+  recordRunEvent,
+  finishRunReport,
+  writeRunReport,
+} = require("./run-report");
 
 let chromium;
 try {
@@ -48,17 +54,6 @@ try {
 } catch (e) {
   ({ chromium } = require("playwright-core"));
 }
-
-process.on("unhandledRejection", (e) =>
-  console.log(
-    `[${new Date().toLocaleString()}] unhandledRejection (ignored): ${String((e && e.message) || e).split("\n")[0]}`,
-  ),
-);
-process.on("uncaughtException", (e) =>
-  console.log(
-    `[${new Date().toLocaleString()}] uncaughtException (ignored): ${String((e && e.message) || e).split("\n")[0]}`,
-  ),
-);
 
 const SITE_ARG = (process.argv[2] || "wellfound").toLowerCase();
 const LOGIN_MODE = process.argv.includes("login");
@@ -280,6 +275,43 @@ const MAX_RUNTIME_MS = 100 * 60 * 1000;
 
 const log = (msg) =>
   console.log(`[${new Date().toLocaleString()}] [${SITE_ARG}] ${msg}`);
+const runReport = createRunReport({
+  platform: SITE_ARG,
+  platformName: site.name,
+  mode: LOGIN_MODE ? "login" : LIVE ? "live" : "dry-run",
+  target: TARGET,
+});
+
+function runStartupChecks() {
+  const scriptPath = path.join(__dirname, site.script);
+  const profilePath = path.join(__dirname, site.profile);
+  const checks = {
+    scriptReadable: false,
+    workspaceWritable: false,
+    profileDirectoryExists: fs.existsSync(profilePath),
+    candidateIdentityConfigured: Boolean(CV.name && CV.email),
+  };
+  try {
+    fs.accessSync(scriptPath, fs.constants.R_OK);
+    checks.scriptReadable = true;
+  } catch {}
+  try {
+    fs.accessSync(__dirname, fs.constants.R_OK | fs.constants.W_OK);
+    checks.workspaceWritable = true;
+  } catch {}
+  recordRunEvent(runReport, "startup_checks", checks);
+  log(
+    `Startup checks: script=${checks.scriptReadable ? "ready" : "missing"}, workspace=${checks.workspaceWritable ? "writable" : "not writable"}, profile=${checks.profileDirectoryExists ? "present" : "will be created"}, identity=${checks.candidateIdentityConfigured ? "configured" : "incomplete"}`,
+  );
+  if (!checks.scriptReadable || !checks.workspaceWritable) {
+    throw new Error("Startup check failed: script or workspace is unavailable");
+  }
+  if (LIVE && !checks.candidateIdentityConfigured) {
+    throw new Error(
+      "Live mode requires NAME and EMAIL to be configured in .env or the environment",
+    );
+  }
+}
 
 function loadSearchState() {
   try {
@@ -427,74 +459,102 @@ function buildInjection() {
 }
 
 (async () => {
-  if (LOGIN_MODE) {
-    const { spawn } = require("child_process");
-    const profilePath = path.resolve(__dirname, site.profile);
-    const chromePaths = [
-      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-      "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-      path.join(
-        process.env.LOCALAPPDATA || "",
-        "Google\\Chrome\\Application\\chrome.exe",
+  let ctx = null;
+  let runOutcome = "running";
+  let runnerClosing = false;
+  try {
+    runStartupChecks();
+    if (LOGIN_MODE) {
+      const { spawn } = require("child_process");
+      const profilePath = path.resolve(__dirname, site.profile);
+      const chromePaths = [
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+        path.join(
+          process.env.LOCALAPPDATA || "",
+          "Google\\Chrome\\Application\\chrome.exe",
+        ),
+      ];
+      const chromeExe = chromePaths.find((p) => fs.existsSync(p)) || "chrome";
+
+      log(`Opening Native Chrome for ${site.name} login...`);
+      log(`Profile Directory: ${profilePath}`);
+      log(
+        `👉 Log in with Google or Mobile/Email + OTP / Password. When finished, CLOSE the browser window.`,
+      );
+      recordRunEvent(runReport, "login_browser_starting", {
+        profileDirectoryExists: fs.existsSync(profilePath),
+      });
+
+      const chromeProcess = spawn(
+        chromeExe,
+        [
+          `--user-data-dir=${profilePath}`,
+          "--no-first-run",
+          "--no-default-browser-check",
+          "--start-maximized",
+          site.loginUrl,
+        ],
+        { stdio: "ignore", detached: false },
+      );
+
+      const exit = await new Promise((resolve, reject) => {
+        chromeProcess.once("error", reject);
+        chromeProcess.once("close", (code, signal) =>
+          resolve({ code, signal }),
+        );
+      });
+      if (exit.code !== 0) {
+        throw new Error(
+          `Chrome login window exited with code ${exit.code}${exit.signal ? ` (${exit.signal})` : ""}`,
+        );
+      }
+
+      log(`✅ Login window closed. Session saved to ${site.profile}!`);
+      log(
+        `Now test your automated applications with: npm run dry-run:${SITE_ARG}`,
+      );
+      recordRunEvent(runReport, "login_window_closed", {
+        exitCode: exit.code,
+      });
+      runOutcome = "completed";
+      return;
+    }
+
+    if (TARGET <= 0) {
+      log(
+        `Daily cap of ${DAILY_CAP} applications reached (${dayState.count} today) — exiting.`,
+      );
+      runOutcome = "completed";
+      return;
+    }
+
+    ctx = await chromium.launchPersistentContext(
+      path.join(__dirname, site.profile),
+      {
+        channel: "chrome",
+        headless: false,
+        viewport: { width: 1280, height: 900 },
+        ignoreDefaultArgs: ["--enable-automation"],
+        args: [
+          "--disable-blink-features=AutomationControlled",
+          "--no-default-browser-check",
+          "--no-first-run",
+          "--disable-backgrounding-occluded-windows",
+          "--disable-renderer-backgrounding",
+          "--disable-popup-blocking",
+          "--window-position=-32000,-32000",
+        ],
+        timeout: 30000,
+      },
+    );
+    ctx.setDefaultTimeout(10000);
+    ctx.setDefaultNavigationTimeout(25000);
+    recordRunEvent(runReport, "browser_context_started", {
+      profileDirectoryExists: fs.existsSync(
+        path.join(__dirname, site.profile),
       ),
-    ];
-    const chromeExe = chromePaths.find((p) => fs.existsSync(p)) || "chrome";
-
-    log(`Opening Native Chrome for ${site.name} login...`);
-    log(`Profile Directory: ${profilePath}`);
-    log(
-      `👉 Log in with Google or Mobile/Email + OTP / Password. When finished, CLOSE the browser window.`,
-    );
-
-    const chromeProcess = spawn(
-      chromeExe,
-      [
-        `--user-data-dir=${profilePath}`,
-        "--no-first-run",
-        "--no-default-browser-check",
-        "--start-maximized",
-        site.loginUrl,
-      ],
-      { stdio: "ignore", detached: false },
-    );
-
-    await new Promise((resolve) => {
-      chromeProcess.on("exit", resolve);
-      chromeProcess.on("close", resolve);
     });
-
-    log(`✅ Login window closed. Session saved to ${site.profile}!`);
-    log(
-      `Now test your automated applications with: npm run dry-run:${SITE_ARG}`,
-    );
-    return;
-  }
-
-  if (TARGET <= 0) {
-    log(
-      `Daily cap of ${DAILY_CAP} applications reached (${dayState.count} today) — exiting.`,
-    );
-    return;
-  }
-
-  const ctx = await chromium.launchPersistentContext(
-    path.join(__dirname, site.profile),
-    {
-      channel: "chrome",
-      headless: false,
-      viewport: { width: 1280, height: 900 },
-      ignoreDefaultArgs: ["--enable-automation"],
-      args: [
-        "--disable-blink-features=AutomationControlled",
-        "--no-default-browser-check",
-        "--no-first-run",
-        "--disable-backgrounding-occluded-windows",
-        "--disable-renderer-backgrounding",
-        "--disable-popup-blocking",
-        "--window-position=-32000,-32000",
-      ],
-    },
-  );
 
   const mainPage = ctx.pages()[0] || (await ctx.newPage());
 
@@ -508,37 +568,139 @@ function buildInjection() {
   let pendingJob = null;
   let activeSearchUrl = "";
   const isHirist = SITE_ARG === "hirist";
-  let runnerClosing = false;
   let hiristForbiddenJobDataRequest = null;
   let hiristOtherForbiddenRequest = null;
 
   const isBusy = (p) => p.evaluate("!!window.__aaBusy").catch(() => false);
 
+  async function diagnosePage(page, response) {
+    try {
+      const state = await page.evaluate(() => {
+        const pageText = document.body?.innerText?.slice(0, 8000) || "";
+        const currentUrl = new URL(location.href);
+        const pageContent = `${document.title} ${pageText}`;
+        return {
+          url: currentUrl.href,
+          readyState: document.readyState,
+          jobLinks: document.querySelectorAll(
+            'a[href*="job"], a[href*="opportunit"], a[href*="vacanc"]',
+          ).length,
+          loginRequired:
+            /\/(?:login|signin|sign-in|auth)(?:\/|$)/i.test(
+              currentUrl.pathname,
+            ) ||
+            /please sign in to (?:continue|apply)|your session has expired|log in to continue/i.test(
+              pageContent,
+            ),
+          verificationRequired:
+            /captcha|verify (?:that )?you are (?:a )?human|unusual traffic|security check|access denied|not a robot/i.test(
+              pageContent,
+            ),
+          noResults:
+            /no jobs found|no results found|couldn't find any jobs/i.test(
+              pageText,
+            ),
+        };
+      });
+      state.httpStatus = response ? response.status() : null;
+      state.platformPage = site.injectOn(state.url);
+      recordRunEvent(runReport, "page_diagnostic", state);
+
+      if (state.loginRequired) {
+        recordRunEvent(runReport, "login_required", { url: state.url });
+        log(
+          `Login is required to continue on ${site.name}. Run npm run login:${SITE_ARG}, then retry.`,
+        );
+      }
+      if (state.verificationRequired) {
+        recordRunEvent(runReport, "verification_required", {
+          url: state.url,
+        });
+        log(
+          `${site.name} requested a CAPTCHA or human verification. Automation is pausing; resolve it manually in Chrome, then rerun.`,
+        );
+      }
+      if (response && response.status() >= 400) {
+        log(`${site.name} page returned HTTP ${response.status()}.`);
+      }
+      if (!state.platformPage) {
+        recordRunEvent(runReport, "unexpected_platform_page", {
+          url: state.url,
+        });
+        log(`${site.name} navigation ended outside its expected pages.`);
+      }
+      return state;
+    } catch (e) {
+      recordRunEvent(runReport, "diagnostic_failed", {
+        message: e.message,
+        url: page.url(),
+      });
+      log(`${site.name} page diagnostics failed: ${e.message.split("\n")[0]}`);
+      return null;
+    }
+  }
+
   async function injectPage(page, trigger) {
     if (runnerClosing || page.isClosed()) return false;
     if (!site.injectOn(page.url())) {
-      if (isHirist) {
-        log(`Hirist injection skipped after ${trigger}: URL is outside search/job pages`);
-      }
       return false;
     }
     try {
       if (runnerClosing || page.isClosed()) return false;
       await page.evaluate(injection);
+      recordRunEvent(runReport, "script_injected", {
+        trigger,
+        url: page.url(),
+      });
       return true;
     } catch (e) {
-      if (isHirist && !runnerClosing && !page.isClosed()) {
-        log(`Hirist script injection failed after ${trigger}: ${e.message}`);
+      if (!runnerClosing && !page.isClosed()) {
+        recordRunEvent(runReport, "injection_failed", {
+          trigger,
+          url: page.url(),
+          message: e.message,
+        });
+        log(`${site.name} script injection failed after ${trigger}: ${e.message.split("\n")[0]}`);
       }
       return false;
     }
   }
 
   function wire(page) {
-    if (isHirist) {
-      page.on("pageerror", (error) => {
-        log(`Hirist browser error: ${error.message.split("\n")[0]}`);
+    page.on("pageerror", (error) => {
+      recordRunEvent(runReport, "page_error", {
+        message: error.message,
+        url: page.url(),
       });
+      log(`${site.name} browser error: ${error.message.split("\n")[0]}`);
+    });
+    page.on("requestfailed", (request) => {
+      const failure = request.failure();
+      if (failure?.errorText === "net::ERR_ABORTED") return;
+      if (
+        !request.isNavigationRequest() &&
+        !["xhr", "fetch"].includes(request.resourceType())
+      ) {
+        return;
+      }
+      recordRunEvent(runReport, "request_failed", {
+        url: request.url(),
+        method: request.method(),
+        error: failure?.errorText || "request failed",
+      });
+    });
+    page.on("response", (response) => {
+      if (
+        response.request().isNavigationRequest() &&
+        response.status() >= 400
+      ) {
+        recordRunEvent(runReport, "navigation_http_error", {
+          url: response.url(),
+          status: response.status(),
+        });
+      }
+    });
+    if (isHirist) {
       page.on("response", (response) => {
         const request = response.request();
         const resourceType = request.resourceType();
@@ -581,6 +743,7 @@ function buildInjection() {
       // Capture job evaluation info
       const mEval = clean.match(/(?:[^\w\s])?\s*Evaluating(?:\s+Single\s+Job\s+Page)?:?\s*(.+)/i) || clean.match(/Evaluating:\s*(.+)/i);
       if (mEval) {
+        recordRunEvent(runReport, "job_evaluated");
         const parts = mEval[1].split(" | ");
         const atParts = parts[0].split(" @ ");
         const company = atParts.length > 1 ? atParts.pop() : "";
@@ -620,18 +783,20 @@ function buildInjection() {
         pendingJob.score = mScore[1];
         const platformThreshold =
           eligibilityPolicy.scoreThresholds[SITE_ARG] || 65;
-        if (
-          Number(mScore[1]) >= platformThreshold &&
-          pendingJob.searchUrl
-        ) {
-          recordSearchActivity(
-            searchState,
-            pendingJob.searchUrl,
-            "eligible",
-            undefined,
-            pendingJob.id,
-          );
-          saveSearchState();
+        if (Number(mScore[1]) >= platformThreshold) {
+          recordRunEvent(runReport, "job_eligible", {
+            score: Number(mScore[1]),
+          });
+          if (pendingJob.searchUrl) {
+            recordSearchActivity(
+              searchState,
+              pendingJob.searchUrl,
+              "eligible",
+              undefined,
+              pendingJob.id,
+            );
+            saveSearchState();
+          }
         }
       }
 
@@ -642,6 +807,14 @@ function buildInjection() {
 
       if (site.submittedRe.test(text)) {
         submitted++;
+        recordRunEvent(
+          runReport,
+          LIVE ? "application_confirmed" : "dry_run_application",
+          { jobId: pendingJob?.id || "" },
+        );
+        recordRunEvent(runReport, "application_detected", {
+          mode: LIVE ? "live" : "dry-run",
+        });
         log(
           `==> ${submitted}/${TARGET} this run (${dayState.count + 1}/${DAILY_CAP} today)`,
         );
@@ -694,75 +867,70 @@ function buildInjection() {
     );
     let response = null;
     let navigationError = null;
-    for (let attempt = 1; attempt <= (isHirist ? 2 : 1); attempt++) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+    recordRunEvent(runReport, "navigation_started", {
+      attempt,
+      searchUrl,
+    });
       try {
         response = await mainPage.goto(searchUrl, {
           waitUntil: "commit",
-          timeout: isHirist ? 20000 : 15000,
+        timeout: isHirist ? 25000 : 20000,
         });
         navigationError = null;
+      lastActivity = Date.now();
         break;
       } catch (e) {
         navigationError = e;
+      recordRunEvent(runReport, "navigation_failed", {
+        attempt,
+        searchUrl,
+        message: e.message,
+      });
         log(
           `${site.name} navigation attempt ${attempt} failed: ${e.message.split("\n")[0]}`,
         );
       }
     }
-    if (navigationError && isHirist) {
-      log(
-        `Skipping this Hirist search URL after retry; browser remains at ${mainPage.url()}`,
-      );
+    if (navigationError) {
+    log(`Skipping this search after retries; browser remains at ${mainPage.url()}.`);
       continue;
     }
     if (response) {
       await mainPage
         .waitForLoadState("domcontentloaded", { timeout: 8000 })
         .catch((e) => {
-          if (isHirist) {
-            log(`Hirist DOMContentLoaded wait ended: ${e.message.split("\n")[0]}`);
-          }
+        recordRunEvent(runReport, "load_state_timeout", {
+          url: mainPage.url(),
+          message: e.message,
+        });
+        log(`${site.name} DOMContentLoaded wait ended: ${e.message.split("\n")[0]}`);
         });
     }
     await mainPage.waitForTimeout(8000);
-    let pageState = null;
+    const pageState = await diagnosePage(mainPage, response);
     if (isHirist) {
-      pageState = await mainPage
-        .evaluate(() => {
-          const pageText = document.body?.innerText?.slice(0, 5000) || "";
-          return {
-            url: location.href,
-            title: document.title,
-            readyState: document.readyState,
-            jobLinks: document.querySelectorAll(
-              'a[href*="/j/"], a[href*="/job/"], a[href*="jobId="]',
-            ).length,
-            loginPrompt: /log\s*in|sign\s*in/i.test(
-              `${document.title} ${pageText}`,
-            ),
-            verificationPrompt: /captcha|verify you are human|access denied/i.test(
-              `${document.title} ${pageText}`,
-            ),
-            noResults: /no jobs found|no results found|couldn't find any jobs/i.test(
-              pageText,
-            ),
-          };
-        })
-        .catch((e) => {
-          log(`Hirist page diagnostics failed: ${e.message.split("\n")[0]}`);
-          return null;
-        });
       if (pageState) {
-        const status = response ? response.status() : "no response";
         log(
-          `Hirist page state: HTTP ${status}, ${pageState.readyState}, title="${pageState.title}", URL=${pageState.url}, job links=${pageState.jobLinks}, login=${pageState.loginPrompt}, verification=${pageState.verificationPrompt}, no-results=${pageState.noResults}`,
+        `Hirist page state: HTTP ${pageState.httpStatus || "no response"}, ${pageState.readyState}, URL=${pageState.url}, job links=${pageState.jobLinks}, login=${pageState.loginRequired}, verification=${pageState.verificationRequired}, no-results=${pageState.noResults}`,
         );
       }
+    }
+    if (
+    pageState &&
+    (pageState.loginRequired ||
+      pageState.verificationRequired ||
+      [401, 403, 429].includes(pageState.httpStatus) ||
+      !pageState.platformPage)
+    ) {
+    runOutcome = "blocked";
+    break;
     }
     await injectPage(mainPage, "search navigation");
     if (isHirist && pageState && pageState.jobLinks === 0) {
       await mainPage.waitForTimeout(5000);
       if (hiristForbiddenJobDataRequest) {
+        runOutcome = "blocked";
         log(
           `Hirist returned no job links and a likely job-data endpoint was denied (${hiristForbiddenJobDataRequest}); stopping this run. Check that the search feed loads normally in the saved Chrome profile before retrying.`,
         );
@@ -778,22 +946,28 @@ function buildInjection() {
     }
 
     // Allow search page to process
-    let searchWait = 0;
-    while (searchWait < 180000 && submitted < TARGET && Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 30000));
-      searchWait += 30000;
+    const searchStartedAt = Date.now();
+    while (
+      Date.now() - searchStartedAt < 180000 &&
+      submitted < TARGET &&
+      Date.now() < deadline
+    ) {
+      await new Promise((r) => setTimeout(r, 10000));
       const pages = ctx.pages();
       let anyBusy = false;
       for (const p of pages) {
         if (await isBusy(p)) anyBusy = true;
       }
-      if (!anyBusy) {
-        await injectPage(mainPage, "search polling");
+      if (anyBusy) {
+        lastActivity = Date.now();
+        continue;
       }
+      await injectPage(mainPage, "search polling");
+      if (Date.now() - lastActivity >= 30000) break;
     }
     if (isHirist) {
       log(
-        `Hirist search URL complete: submitted=${submitted}/${TARGET}, elapsed=${Math.round(searchWait / 1000)}s`,
+        `Hirist search URL complete: submitted=${submitted}/${TARGET}, elapsed=${Math.round((Date.now() - searchStartedAt) / 1000)}s`,
       );
     }
   }
@@ -801,9 +975,35 @@ function buildInjection() {
   log(
     `Finished: ${submitted}/${TARGET} applications ${LIVE ? "submitted" : "simulated (dry run)"}.`,
   );
+  if (runOutcome === "running") runOutcome = "completed";
   runnerClosing = true;
-  await ctx.close();
+  } catch (e) {
+    runOutcome = "failed";
+    recordRunEvent(runReport, "run_error", { message: e.message });
+    throw e;
+  } finally {
+    if (ctx) {
+      try {
+        runnerClosing = true;
+        await ctx.close();
+      } catch (e) {
+        runOutcome = "failed";
+        recordRunEvent(runReport, "browser_close_failed", {
+          message: e.message,
+        });
+        log(`Could not close browser context cleanly: ${e.message.split("\n")[0]}`);
+      }
+    }
+    finishRunReport(runReport, runOutcome);
+    try {
+      const reportPath = writeRunReport(runReport);
+      log(`Run report saved: ${path.relative(__dirname, reportPath)}`);
+    } catch (e) {
+      console.error(`[${SITE_ARG}] Failed to write run report: ${e.message}`);
+      process.exitCode = 1;
+    }
+  }
 })().catch((e) => {
   log("FATAL: " + e.message.split("\n")[0]);
-  process.exit(1);
+  process.exitCode = 1;
 });

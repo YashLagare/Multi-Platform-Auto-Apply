@@ -38,6 +38,7 @@ apply-state-*.json
 applied-jobs-*.json
 search-performance-*.json
 applied-jobs.json
+run-reports/
 *.tmp
 *.temp
 
