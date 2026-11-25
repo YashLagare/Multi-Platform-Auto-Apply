@@ -281,6 +281,7 @@ const runReport = createRunReport({
   mode: LOGIN_MODE ? "login" : LIVE ? "live" : "dry-run",
   target: TARGET,
 });
+const runStartedAt = Date.parse(runReport.startedAt);
 
 function runStartupChecks() {
   const scriptPath = path.join(__dirname, site.script);
@@ -462,7 +463,34 @@ function buildInjection() {
   let ctx = null;
   let runOutcome = "running";
   let runnerClosing = false;
+  let runTimedOut = false;
+  let hardStopTimer = null;
   try {
+    if (!LOGIN_MODE) {
+      const timeRemaining = Math.max(
+        0,
+        runStartedAt + MAX_RUNTIME_MS - Date.now(),
+      );
+      hardStopTimer = setTimeout(() => {
+        runTimedOut = true;
+        runOutcome = "timed_out";
+        runnerClosing = true;
+        process.exitCode = 1;
+        recordRunEvent(runReport, "runtime_limit_reached", {
+          limitMs: MAX_RUNTIME_MS,
+        });
+        log(
+          `Hard runtime limit reached (${Math.round(MAX_RUNTIME_MS / 60000)} minutes); closing the browser and stopping this run.`,
+        );
+        if (ctx) {
+          const contextToClose = ctx;
+          ctx = null;
+          contextToClose.close().catch((e) => {
+            log(`Browser close after timeout failed: ${e.message.split("\n")[0]}`);
+          });
+        }
+      }, timeRemaining);
+    }
     runStartupChecks();
     if (LOGIN_MODE) {
       const { spawn } = require("child_process");
@@ -562,7 +590,7 @@ function buildInjection() {
     `Starting ${site.name} Runner. Mode=${LIVE ? "LIVE" : "DRY RUN"}, Target=${TARGET}, Known Applied IDs=${Object.keys(appliedDb.appliedIds).length}`,
   );
   const injection = buildInjection();
-  const deadline = Date.now() + MAX_RUNTIME_MS;
+  const deadline = runStartedAt + MAX_RUNTIME_MS;
   let submitted = 0;
   let lastActivity = Date.now();
   let pendingJob = null;
@@ -973,15 +1001,24 @@ function buildInjection() {
   }
 
   log(
-    `Finished: ${submitted}/${TARGET} applications ${LIVE ? "submitted" : "simulated (dry run)"}.`,
+    runTimedOut
+      ? `Stopped at the ${Math.round(MAX_RUNTIME_MS / 60000)}-minute runtime limit after ${submitted}/${TARGET} ${LIVE ? "applications submitted" : "dry-run applications simulated"}.`
+      : `Finished: ${submitted}/${TARGET} applications ${LIVE ? "submitted" : "simulated (dry run)"}.`,
   );
-  if (runOutcome === "running") runOutcome = "completed";
+  if (runTimedOut) runOutcome = "timed_out";
+  else if (runOutcome === "running") runOutcome = "completed";
   runnerClosing = true;
   } catch (e) {
-    runOutcome = "failed";
-    recordRunEvent(runReport, "run_error", { message: e.message });
-    throw e;
+    if (runTimedOut) {
+      runOutcome = "timed_out";
+      log(`Run stopped at the runtime limit: ${e.message.split("\n")[0]}`);
+    } else {
+      runOutcome = "failed";
+      recordRunEvent(runReport, "run_error", { message: e.message });
+      throw e;
+    }
   } finally {
+    if (hardStopTimer) clearTimeout(hardStopTimer);
     if (ctx) {
       try {
         runnerClosing = true;

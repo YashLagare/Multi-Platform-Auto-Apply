@@ -34,6 +34,19 @@ assert.strictEqual(report.events[0].url, "https://example.test/jobs");
 assert(!JSON.stringify(report).includes("secret"));
 assert(!JSON.stringify(report).includes("private"));
 
+const timedOutReport = createRunReport({
+  platform: "wellfound",
+  platformName: "Wellfound",
+  mode: "dry-run",
+  target: 50,
+});
+recordRunEvent(timedOutReport, "runtime_limit_reached", {
+  limitMs: 100 * 60 * 1000,
+});
+finishRunReport(timedOutReport, "timed_out");
+assert.strictEqual(timedOutReport.outcome, "timed_out");
+assert.strictEqual(timedOutReport.metrics.runtimeLimitStops, 1);
+
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "auto-apply-run-report-"));
 let reportPath;
 try {

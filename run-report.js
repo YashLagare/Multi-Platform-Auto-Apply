@@ -15,6 +15,7 @@ const METRIC_BY_EVENT = {
   page_error: "pageErrors",
   request_failed: "requestFailures",
   injection_failed: "injectionFailures",
+  runtime_limit_reached: "runtimeLimitStops",
 };
 
 function safeUrl(value) {
@@ -62,6 +63,7 @@ function createRunReport({ platform, platformName, mode, target }) {
       pageErrors: 0,
       requestFailures: 0,
       injectionFailures: 0,
+      runtimeLimitStops: 0,
     },
     events: [],
   };
@@ -89,7 +91,7 @@ function recordRunEvent(report, type, details = {}) {
 }
 
 function finishRunReport(report, outcome) {
-  if (!["completed", "blocked", "failed"].includes(outcome)) {
+  if (!["completed", "blocked", "failed", "timed_out"].includes(outcome)) {
     throw new TypeError(`Invalid run outcome: ${outcome}`);
   }
   const finishedAt = new Date();

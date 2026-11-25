@@ -139,7 +139,7 @@ Run the diagnostic doctor to verify `.env` parameters, AI connectivity, Chrome p
 npm run check
 ```
 
-The runner also performs platform-specific startup checks and inspects each search page for login redirects, CAPTCHA/human verification, unexpected domains, HTTP errors, and missing results. It stops rather than trying to bypass login or verification checks. Browser navigation is retried once, and application runs write a structured, query-redacted JSON report to the ignored `run-reports/` folder. Reports include counters and diagnostic/error events, but not profile values.
+The runner also performs platform-specific startup checks and inspects each search page for login redirects, CAPTCHA/human verification, unexpected domains, HTTP errors, and missing results. It stops rather than trying to bypass login or verification checks. Browser navigation is retried once. Dry-run and live runs share a hard 100-minute wall-clock limit; when reached, the browser closes and the JSON report records `timed_out`. Interactive login mode is exempt so you can finish signing in. Application runs write a structured, query-redacted JSON report to the ignored `run-reports/` folder. Reports include counters and diagnostic/error events, but not profile values.
 
 ---
 
